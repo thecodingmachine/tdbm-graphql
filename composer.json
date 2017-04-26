@@ -1,0 +1,21 @@
+{
+    "name": "thecodingmachine/tdbm-graphql",
+    "description": ".",
+    "authors": [
+        {
+            "name": "David Négrier",
+            "email": "d.negrier@thecodingmachine.com"
+        }
+    ],
+    "require": {
+        "youshido/graphql": "^1.4",
+        "mouf/database.tdbm": "^4.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "TheCodingMachine\\Tdbm\\GraphQL\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
