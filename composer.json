@@ -1,6 +1,7 @@
 {
     "name": "thecodingmachine/tdbm-graphql",
-    "description": ".",
+    "description": "A class generator that will generate GraphQL types from your database schema (using youshido/graphql).",
+    "license": "MIT",
     "authors": [
         {
             "name": "David Négrier",
