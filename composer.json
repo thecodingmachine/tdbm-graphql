@@ -10,7 +10,7 @@
     ],
     "require": {
         "youshido/graphql": "^1.4",
-        "mouf/database.tdbm": "^4.3"
+        "thecodingmachine/tdbm": "^5.0"
     },
     "autoload": {
         "psr-4": {
