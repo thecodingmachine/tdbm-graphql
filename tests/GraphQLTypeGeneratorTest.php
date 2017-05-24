@@ -6,37 +6,38 @@ namespace TheCodingMachine\Tdbm\GraphQL;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
-use Mouf\Database\TDBM\Configuration;
-use Mouf\Database\TDBM\TDBMService;
-use Mouf\Database\TDBM\Utils\DefaultNamingStrategy;
+use TheCodingMachine\TDBM\Configuration;
+use TheCodingMachine\TDBM\TDBMService;
+use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
+use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
 {
-    public static function setUpBeforeClass()
-    {
-        $config = new \Doctrine\DBAL\Configuration();
-
-        $connectionParams = array(
+    private static function getAdminConnectionParams(): array {
+        return array(
             'user' => $GLOBALS['db_username'],
             'password' => $GLOBALS['db_password'],
             'host' => $GLOBALS['db_host'],
             'port' => $GLOBALS['db_port'],
             'driver' => $GLOBALS['db_driver'],
         );
+    }
 
-        $adminConn = DriverManager::getConnection($connectionParams, $config);
+    private static function getConnectionParams(): array {
+        $adminParams = self::getAdminConnectionParams();
+        $adminParams['dbname'] = $GLOBALS['db_name'];
+        return $adminParams;
+    }
+
+    public static function setUpBeforeClass()
+    {
+        $config = new \Doctrine\DBAL\Configuration();
+
+        $adminConn = DriverManager::getConnection(self::getAdminConnectionParams(), $config);
         $adminConn->getSchemaManager()->dropAndCreateDatabase($GLOBALS['db_name']);
 
-        $connectionParams['dbname'] = $GLOBALS['db_name'];
-
-        $dbConnection = DriverManager::getConnection($connectionParams, $config);
-
-        self::loadSqlFile($dbConnection, __DIR__.'/sql/graphqlunittest.sql');
-
-        $tdbmService = self::getTDBMService($dbConnection);
-
-        $tdbmService->generateAllDaosAndBeans();
+        self::loadSqlFile($adminConn, __DIR__.'/sql/graphqlunittest.sql');
     }
 
     protected static function loadSqlFile(Connection $connection, $sqlFile)
@@ -56,8 +57,14 @@ class GraphQLTypeGeneratorTest extends TestCase
         return new TDBMService($configuration);
     }
 
-    public function testFilesCreated()
+    public function testGenerate()
     {
+        $config = new \Doctrine\DBAL\Configuration();
+        $dbConnection = DriverManager::getConnection(self::getConnectionParams(), $config);
+        $tdbmService = self::getTDBMService($dbConnection);
+        $tdbmService->generateAllDaosAndBeans();
 
+        $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/UserType.php');
+        $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/Generated/AbstractUserType.php');
     }
 }

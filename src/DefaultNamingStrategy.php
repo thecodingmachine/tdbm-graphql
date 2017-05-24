@@ -3,24 +3,27 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-use Mouf\Database\TDBM\Utils\BeanDescriptorInterface;
+use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
 
 class DefaultNamingStrategy implements NamingStrategyInterface
 {
-    public function getGraphQLType(BeanDescriptorInterface $beanDescriptor) : string
+    public function getGraphQLType(string $beanClassName): string
     {
-        return $beanDescriptor->getBeanClassName();
+        return $beanClassName;
     }
 
-    public function getClassName(BeanDescriptorInterface $beanDescriptor) : string
+    public function getClassName(string $beanClassName) : string
     {
-        return $this->getGraphQLType($beanDescriptor).'Type';
+        return $this->getGraphQLType($beanClassName).'Type';
     }
 
-    public function getGeneratedClassName(BeanDescriptorInterface $beanDescriptor) : string
+    public function getGeneratedClassName(string $beanClassName) : string
     {
-        return 'Abstract'.$this->getClassName($beanDescriptor);
+        return 'Abstract'.$this->getClassName($beanClassName);
     }
 
-
+    public function getFieldName(AbstractBeanPropertyDescriptor $descriptor): string
+    {
+        return substr($descriptor->getVariableName(), 1);
+    }
 }

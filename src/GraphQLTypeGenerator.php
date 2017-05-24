@@ -2,10 +2,19 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use Mouf\Composer\ClassNameMapper;
-use Mouf\Database\TDBM\ConfigurationInterface;
-use Mouf\Database\TDBM\Utils\BeanDescriptorInterface;
-use Mouf\Database\TDBM\Utils\GeneratorListenerInterface;
+use TheCodingMachine\TDBM\ConfigurationInterface;
+use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
+use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
+use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
+use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
+use Youshido\GraphQL\Type\Scalar\BooleanType;
+use Youshido\GraphQL\Type\Scalar\DateTimeType;
+use Youshido\GraphQL\Type\Scalar\FloatType;
+use Youshido\GraphQL\Type\Scalar\IdType;
+use Youshido\GraphQL\Type\Scalar\IntType;
+use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGenerator implements GeneratorListenerInterface
 {
@@ -46,24 +55,60 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
     public function onGenerate(ConfigurationInterface $configuration, array $beanDescriptors): void
     {
         foreach ($beanDescriptors as $beanDescriptor) {
-            $this->generateTypeClass($beanDescriptor);
+            $this->generateAbstractTypeFile($beanDescriptor);
+            $this->generateMainTypeFile($beanDescriptor);
         }
     }
 
-    private function generateTypeClass(BeanDescriptorInterface $beanDescriptor)
+    private function generateAbstractTypeFile(BeanDescriptorInterface $beanDescriptor)
     {
-        $generatedTypeClassName = $this->namingStrategy->getGeneratedClassName($beanDescriptor);
-        $typeClassName = $this->namingStrategy->getClassName($beanDescriptor);
-        $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor), true);
+        // FIXME: find a way around inheritance issues => we should have interfaces for inherited tables.
+        // Ideally, the interface should have the same fields as the type (so no issue)
+
+        $generatedTypeClassName = $this->namingStrategy->getGeneratedClassName($beanDescriptor->getBeanClassName());
+        $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor->getBeanClassName()), true);
+
+        $properties = $beanDescriptor->getExposedProperties();
+        $fieldsCodes = array_map([$this, 'generateFieldCode'], $properties);
+
+        $fieldsCode = implode('', $fieldsCodes);
+
+        $fieldFetcherCodes = array_map(function(AbstractBeanPropertyDescriptor $propertyDescriptor) { return '            $this->'.$propertyDescriptor->getGetterName(). 'Field(),'; }, $properties);
+        $fieldFetcherCode = implode("\n", $fieldFetcherCodes);
+
+        $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
+        if ($extendedBeanClassName === null) {
+            $baseClassName = 'AbstractObjectType';
+            $isExtended = false;
+        } else {
+            $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
+            $isExtended = true;
+        }
 
         $str = <<<EOF
 <?php
 namespace {$this->generatedNamespace};
 
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
+use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
+use TheCodingMachine\Tdbm\GraphQL\Field;
+use Youshido\GraphQL\Type\NonNullType;
 
-abstract class $generatedTypeClassName extends AbstractObjectType
+abstract class $generatedTypeClassName extends $baseClassName
 {
+
+EOF;
+        if (!$isExtended) {
+            $str .= <<<EOF
+    /**
+     * Alters the list of properties for this type.
+     */
+    abstract public function alter(): void;
+
+
+EOF;
+        }
+        $str .= <<<EOF
     public function getName()
     {
         return $typeName;
@@ -72,14 +117,20 @@ abstract class $generatedTypeClassName extends AbstractObjectType
     /**
      * @param ObjectTypeConfig \$config
      */
-    public function build(\$config)  // implementing an abstract function where you build your type
+    public function build(\$config)
     {
-        // TODO
-        //\$config
-        //    ->addField('title', new StringType())       // defining "title" field of type String
-        //    ->addField('summary', new StringType());    // defining "summary" field of type String
+        parent::build(\$config);
+        \$this->alter();
+        \$config->addFields(array_filter([
+$fieldFetcherCode
+        ], function(\$field) {
+            return !\$field->isHidden();
+        }));
     }
+    
+$fieldsCode
 }
+
 EOF;
 
         $fileSystem = new Filesystem();
@@ -91,5 +142,118 @@ EOF;
         }
 
         $fileSystem->dumpFile($generatedFilePaths[0], $str);
+    }
+
+    private function generateMainTypeFile(BeanDescriptorInterface $beanDescriptor)
+    {
+        $typeClassName = $this->namingStrategy->getClassName($beanDescriptor->getBeanClassName());
+        $generatedTypeClassName = $this->namingStrategy->getGeneratedClassName($beanDescriptor->getBeanClassName());
+
+        $fileSystem = new Filesystem();
+
+        $fqcn = $this->namespace.'\\'.$typeClassName;
+        $filePaths = $this->classNameMapper->getPossibleFileNames($fqcn);
+        if (empty($filePaths)) {
+            throw new GraphQLGeneratorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
+        }
+        $filePath = $filePaths[0];
+
+        if ($fileSystem->exists($filePath)) {
+            return;
+        }
+
+        $isExtended = $beanDescriptor->getExtendedBeanClassName() !== null;
+        if ($isExtended) {
+            $alterParentCall = "parent::alter();\n        ";
+        } else {
+            $alterParentCall = '';
+        }
+
+        $str = <<<EOF
+<?php
+namespace {$this->namespace};
+
+use {$this->generatedNamespace}\\$generatedTypeClassName;
+
+class $typeClassName extends $generatedTypeClassName
+{
+    /**
+     * Alters the list of properties for this type.
+     */
+    public function alter(): void
+    {
+        $alterParentCall// You can alter the fields of this type here.
+    }
+}
+
+EOF;
+
+        $fileSystem->dumpFile($filePaths[0], $str);
+    }
+
+    private function generateFieldCode(AbstractBeanPropertyDescriptor $descriptor) : string
+    {
+        $getterName = $descriptor->getGetterName();
+        $fieldNameAsCode = var_export($this->namingStrategy->getFieldName($descriptor), true);
+        $variableName = $descriptor->getVariableName().'Field';
+        $thisVariableName = '$this->'.substr($descriptor->getVariableName().'Field', 1);
+
+        // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
+        $type = $this->getType($descriptor);
+
+        $code = <<<EOF
+    private $variableName;
+        
+    protected function {$getterName}Field() : Field
+    {
+        if ($thisVariableName === null) {
+            $thisVariableName = new Field($fieldNameAsCode, $type);        
+        }
+        return $thisVariableName;
+    }
+
+
+EOF;
+
+        return $code;
+    }
+
+    private function getType(AbstractBeanPropertyDescriptor $descriptor)
+    {
+        // FIXME: can there be several primary key? If yes, we might need to fix this.
+        // Also, primary key should be named "ID"
+        if ($descriptor->isPrimaryKey()) {
+            return IdType::class;
+        }
+
+        $phpType = $descriptor->getPhpType();
+        if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
+            $map = [
+                // TODO: how to handle JSON properties???
+                //'array' => StringT,
+                'string' => '\\'.StringType::class,
+                'bool' => '\\'.BooleanType::class,
+                '\DateTimeInterface' => '\\'.DateTimeType::class,
+                'float' => '\\'.FloatType::class,
+                'int' => '\\'.IntType::class,
+            ];
+
+            if (!isset($map[$phpType])) {
+                throw new GraphQLGeneratorNamespaceException("Cannot map PHP type '$phpType' to any known GraphQL type.");
+            }
+
+            $newCode = 'new '.$map[$phpType].'()';
+        } elseif ($descriptor instanceof ObjectBeanPropertyDescriptor) {
+            $beanclassName = $descriptor->getClassName();
+            $newCode = 'new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'()';
+        } else {
+            throw new GraphQLGeneratorNamespaceException('Unexpected property descriptor. Cannot handle class '.get_class($descriptor));
+        }
+
+        if ($descriptor->isCompulsory()) {
+            $newCode = "new NonNullType($newCode)";
+        }
+
+        return $newCode;
     }
 }
