@@ -32,11 +32,15 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
      * @var null|NamingStrategyInterface
      */
     private $namingStrategy;
+    /**
+     * @var ClassNameMapper
+     */
+    private $classNameMapper;
 
     /**
      * @param string $namespace The namespace the type classes will be written in.
-     * @param null|string $generatedNamespace The namespace the generated type classes will be written in (defaults to $namespace + '\Generated')
-     * @param null|NamingStrategyInterface $namingStrategy
+     * @param string|null $generatedNamespace The namespace the generated type classes will be written in (defaults to $namespace + '\Generated')
+     * @param NamingStrategyInterface|null $namingStrategy
      */
     public function __construct(string $namespace, ?string $generatedNamespace = null, ?NamingStrategyInterface $namingStrategy = null, ?ClassNameMapper $classNameMapper = null)
     {
