@@ -75,18 +75,15 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 
         $fieldsCode = implode('', $fieldsCodes);
 
-        $fieldFetcherCodes = array_map(function (AbstractBeanPropertyDescriptor $propertyDescriptor) {
-            return '            $this->'.$propertyDescriptor->getGetterName(). 'Field(),';
-        }, $properties);
-        $fieldFetcherCode = implode("\n", $fieldFetcherCodes);
-
         $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
         if ($extendedBeanClassName === null) {
             $baseClassName = 'AbstractObjectType';
+            $callParentBuild = '';
             $isExtended = false;
         } else {
             $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
             $isExtended = true;
+            $callParentBuild = "parent::build(\$config);\n        ";
         }
 
         // one to many and many to many relationships:
@@ -94,13 +91,22 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         $relationshipsCodes = array_map([$this, 'generateRelationshipsCode'], $methodDescriptors);
         $relationshipsCode = implode('', $relationshipsCodes);
 
+        $fieldFetcherCodes = array_map(function (AbstractBeanPropertyDescriptor $propertyDescriptor) {
+            return '            $this->'.$propertyDescriptor->getGetterName(). 'Field(),';
+        }, $properties);
+        $fieldFetcherCodes = array_merge($fieldFetcherCodes, array_map(function (MethodDescriptorInterface $propertyDescriptor) {
+            return '            $this->'.$propertyDescriptor->getName(). 'Field(),';
+        }, $methodDescriptors));
+        $fieldFetcherCode = implode("\n", $fieldFetcherCodes);
+
 
         $str = <<<EOF
 <?php
 namespace {$this->generatedNamespace};
 
-use Youshido\GraphQL\Relay\Connection\Connection;
-use Youshido\GraphQL\Relay\Connection\ArrayConnection;
+//use Youshido\GraphQL\Relay\Connection\Connection;
+//use Youshido\GraphQL\Relay\Connection\ArrayConnection;
+use Youshido\GraphQL\Type\ListType\ListType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use TheCodingMachine\Tdbm\GraphQL\Field;
@@ -131,7 +137,7 @@ EOF;
      */
     public function build(\$config)
     {
-        parent::build(\$config);
+        $callParentBuild
         \$this->alter();
         \$config->addFields(array_filter([
 $fieldFetcherCode
@@ -279,10 +285,10 @@ EOF;
         $thisVariableName = '$this->'.$fieldName.'Field';
 
         // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
-        $type = 'new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'()';
+        $type = 'new NonNullType(new ListType(new NonNullType(new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'())))';
 
         // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
-        $code = <<<EOF
+        /*$code = <<<EOF
     private $variableName;
         
     protected function {$getterName}Field() : Field
@@ -294,6 +300,19 @@ EOF;
                     return ArrayConnection::connectionFromArray(\$value->$getterName(), \$args);
                 }
             ]);        
+        }
+        return $thisVariableName;
+    }
+
+
+EOF;*/
+        $code = <<<EOF
+    private $variableName;
+        
+    protected function {$getterName}Field() : Field
+    {
+        if ($thisVariableName === null) {
+            $thisVariableName = new Field($fieldNameAsCode, $type);        
         }
         return $thisVariableName;
     }

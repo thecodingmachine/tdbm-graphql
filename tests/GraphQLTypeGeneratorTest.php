@@ -6,11 +6,14 @@ use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use TheCodingMachine\TDBM\Configuration;
+use TheCodingMachine\Tdbm\GraphQL\Fixtures\TestSchema;
+use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\TDBM\TDBMService;
 use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
+use Youshido\GraphQL\Execution\Processor;
 use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
@@ -53,8 +56,10 @@ class GraphQLTypeGeneratorTest extends TestCase
         $stmt->execute();
     }
 
-    protected static function getTDBMService(Connection $connection) : TDBMService
+    protected static function getTDBMService() : TDBMService
     {
+        $config = new \Doctrine\DBAL\Configuration();
+        $connection = DriverManager::getConnection(self::getConnectionParams(), $config);
         $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new DefaultNamingStrategy(), new ArrayCache(), null, null, [
             new GraphQLTypeGenerator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL')
         ]);
@@ -64,9 +69,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 
     public function testGenerate()
     {
-        $config = new \Doctrine\DBAL\Configuration();
-        $dbConnection = DriverManager::getConnection(self::getConnectionParams(), $config);
-        $tdbmService = self::getTDBMService($dbConnection);
+        $tdbmService = self::getTDBMService();
         $tdbmService->generateAllDaosAndBeans();
 
         $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/UserType.php');
@@ -77,5 +80,75 @@ class GraphQLTypeGeneratorTest extends TestCase
         $this->assertNotNull($abstractCountryType->getMethod('getUsersField'));
         $abstractUserType = new \ReflectionClass(AbstractUserType::class);
         $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
+    }
+
+    /**
+     * @depends testGenerate
+     */
+    public function testQuery()
+    {
+        $tdbmService = self::getTDBMService();
+        $userDao = new UserDao($tdbmService);
+        $processor = new Processor(new TestSchema($userDao));
+
+        $introspectionQuery = <<<EOF
+{
+  __schema {
+    queryType {
+      name
+    }
+  }
+}
+EOF;
+
+
+        $response = $processor->processPayload($introspectionQuery, [])->getResponseData();
+        $this->assertTrue(isset($response['data']['__schema']['queryType']['name']));
+
+        $introspectionQuery2 = <<<EOF
+{
+  __type(name: "User") {
+    name
+    kind
+    fields {
+      name
+      type {
+        name
+        kind
+      }
+    }
+  }
+}
+EOF;
+
+        $response = $processor->processPayload($introspectionQuery2, [])->getResponseData();
+        $this->assertSame('User', $response['data']['__type']['name']);
+        $this->assertSame('OBJECT', $response['data']['__type']['kind']);
+        $this->assertSame('id', $response['data']['__type']['fields'][0]['name']);
+        $this->assertSame('ID', $response['data']['__type']['fields'][0]['type']['name']);
+        $this->assertSame('SCALAR', $response['data']['__type']['fields'][0]['type']['kind']);
+
+        $found = false;
+        foreach ($response['data']['__type']['fields'] as $field) {
+            if ($field['name'] === 'roles') {
+                $found = true;
+            }
+        }
+        $this->assertTrue($found, 'Failed asserting the roles field is found in user type.');
+
+        $introspectionQuery3 = <<<EOF
+{
+  users {
+    id,
+    name,
+    roles {
+      name
+    }
+  }
+}
+EOF;
+        $response = $processor->processPayload($introspectionQuery3, [])->getResponseData();
+        $this->assertSame('John Smith', $response['data']['users'][0]['name']);
+        $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
     }
 }

@@ -3,6 +3,7 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use Youshido\GraphQL\Execution\ResolveInfo;
 use Youshido\GraphQL\Field\AbstractField;
 use Youshido\GraphQL\Type\AbstractType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
@@ -18,6 +19,14 @@ class Field extends AbstractField
             'name' => $name,
             'type' => $type
         ];
+
+        if (!isset($additionalConfig['resolve'])) {
+            $config['resolve'] = function($source, array $args, ResolveInfo $info) {
+                $getter = 'get'.$info->getField()->getName();
+                return $source->$getter();
+            };
+        }
+
         $config += $additionalConfig;
         parent::__construct($config);
     }
@@ -27,7 +36,7 @@ class Field extends AbstractField
      */
     public function getType()
     {
-        return $this->config['type'];
+        return $this->config->getType();
     }
 
     /**
