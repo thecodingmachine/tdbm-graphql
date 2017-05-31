@@ -11,7 +11,7 @@ use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\TDBM\TDBMService;
-use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy;
+use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy as TdbmDefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
 use Youshido\GraphQL\Execution\Processor;
 use Youshido\GraphQL\Type\Scalar\StringType;
@@ -60,7 +60,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $config = new \Doctrine\DBAL\Configuration();
         $connection = DriverManager::getConnection(self::getConnectionParams(), $config);
-        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new DefaultNamingStrategy(), new ArrayCache(), null, null, [
+        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new TdbmDefaultNamingStrategy(), new ArrayCache(), null, null, [
             new GraphQLTypeGenerator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL')
         ]);
 
