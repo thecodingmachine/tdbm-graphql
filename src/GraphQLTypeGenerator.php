@@ -5,8 +5,10 @@ use Mouf\Composer\ClassNameMapper;
 use TheCodingMachine\TDBM\ConfigurationInterface;
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
+use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
 use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
 use Youshido\GraphQL\Type\Scalar\BooleanType;
@@ -73,7 +75,9 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 
         $fieldsCode = implode('', $fieldsCodes);
 
-        $fieldFetcherCodes = array_map(function(AbstractBeanPropertyDescriptor $propertyDescriptor) { return '            $this->'.$propertyDescriptor->getGetterName(). 'Field(),'; }, $properties);
+        $fieldFetcherCodes = array_map(function (AbstractBeanPropertyDescriptor $propertyDescriptor) {
+            return '            $this->'.$propertyDescriptor->getGetterName(). 'Field(),';
+        }, $properties);
         $fieldFetcherCode = implode("\n", $fieldFetcherCodes);
 
         $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
@@ -85,10 +89,18 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
             $isExtended = true;
         }
 
+        // one to many and many to many relationships:
+        $methodDescriptors = $beanDescriptor->getMethodDescriptors();
+        $relationshipsCodes = array_map([$this, 'generateRelationshipsCode'], $methodDescriptors);
+        $relationshipsCode = implode('', $relationshipsCodes);
+
+
         $str = <<<EOF
 <?php
 namespace {$this->generatedNamespace};
 
+use Youshido\GraphQL\Relay\Connection\Connection;
+use Youshido\GraphQL\Relay\Connection\ArrayConnection;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use TheCodingMachine\Tdbm\GraphQL\Field;
@@ -129,6 +141,7 @@ $fieldFetcherCode
     }
     
 $fieldsCode
+$relationshipsCode
 }
 
 EOF;
@@ -138,7 +151,7 @@ EOF;
         $fqcn = $this->generatedNamespace.'\\'.$generatedTypeClassName;
         $generatedFilePaths = $this->classNameMapper->getPossibleFileNames($this->generatedNamespace.'\\'.$generatedTypeClassName);
         if (empty($generatedFilePaths)) {
-            throw new GraphQLGeneratorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
+            throw new GraphQLGeneratorDirectForeignKeyMethodDescriptorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
         }
 
         $fileSystem->dumpFile($generatedFilePaths[0], $str);
@@ -223,7 +236,7 @@ EOF;
         // FIXME: can there be several primary key? If yes, we might need to fix this.
         // Also, primary key should be named "ID"
         if ($descriptor->isPrimaryKey()) {
-            return IdType::class;
+            return 'new \\'.IdType::class.'()';
         }
 
         $phpType = $descriptor->getPhpType();
@@ -255,5 +268,39 @@ EOF;
         }
 
         return $newCode;
+    }
+
+    private function generateRelationshipsCode(MethodDescriptorInterface $descriptor): string
+    {
+        $getterName = $descriptor->getName();
+        $fieldName = $this->namingStrategy->getFieldNameFromRelationshipDescriptor($descriptor);
+        $fieldNameAsCode = var_export($fieldName, true);
+        $variableName = '$'.$fieldName.'Field';
+        $thisVariableName = '$this->'.$fieldName.'Field';
+
+        // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
+        $type = 'new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'()';
+
+        // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
+        $code = <<<EOF
+    private $variableName;
+        
+    protected function {$getterName}Field() : Field
+    {
+        if ($thisVariableName === null) {
+            $thisVariableName = new Field($fieldNameAsCode, Connection::connectionDefinition($type), [
+                'args' => Connection::connectionArgs(),
+                'resolve' => function (\$value = null, \$args = [], \$type = null) {
+                    return ArrayConnection::connectionFromArray(\$value->$getterName(), \$args);
+                }
+            ]);        
+        }
+        return $thisVariableName;
+    }
+
+
+EOF;
+
+        return $code;
     }
 }

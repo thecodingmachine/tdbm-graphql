@@ -2,11 +2,12 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use TheCodingMachine\TDBM\Configuration;
+use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
+use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\TDBM\TDBMService;
 use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
@@ -14,7 +15,8 @@ use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
 {
-    private static function getAdminConnectionParams(): array {
+    private static function getAdminConnectionParams(): array
+    {
         return array(
             'user' => $GLOBALS['db_username'],
             'password' => $GLOBALS['db_password'],
@@ -24,7 +26,8 @@ class GraphQLTypeGeneratorTest extends TestCase
         );
     }
 
-    private static function getConnectionParams(): array {
+    private static function getConnectionParams(): array
+    {
         $adminParams = self::getAdminConnectionParams();
         $adminParams['dbname'] = $GLOBALS['db_name'];
         return $adminParams;
@@ -37,7 +40,9 @@ class GraphQLTypeGeneratorTest extends TestCase
         $adminConn = DriverManager::getConnection(self::getAdminConnectionParams(), $config);
         $adminConn->getSchemaManager()->dropAndCreateDatabase($GLOBALS['db_name']);
 
-        self::loadSqlFile($adminConn, __DIR__.'/sql/graphqlunittest.sql');
+        $conn = DriverManager::getConnection(self::getConnectionParams(), $config);
+
+        self::loadSqlFile($conn, __DIR__.'/sql/graphqlunittest.sql');
     }
 
     protected static function loadSqlFile(Connection $connection, $sqlFile)
@@ -50,7 +55,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 
     protected static function getTDBMService(Connection $connection) : TDBMService
     {
-        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new DefaultNamingStrategy(), new ArrayCache(),null, null, [
+        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new DefaultNamingStrategy(), new ArrayCache(), null, null, [
             new GraphQLTypeGenerator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL')
         ]);
 
@@ -66,5 +71,11 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/UserType.php');
         $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/Generated/AbstractUserType.php');
+
+        $this->assertTrue(class_exists(AbstractCountryType::class));
+        $abstractCountryType = new \ReflectionClass(AbstractCountryType::class);
+        $this->assertNotNull($abstractCountryType->getMethod('getUsersField'));
+        $abstractUserType = new \ReflectionClass(AbstractUserType::class);
+        $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
     }
 }

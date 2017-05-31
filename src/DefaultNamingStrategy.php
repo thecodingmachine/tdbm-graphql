@@ -4,6 +4,8 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
+use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
+use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 
 class DefaultNamingStrategy implements NamingStrategyInterface
 {
@@ -25,5 +27,10 @@ class DefaultNamingStrategy implements NamingStrategyInterface
     public function getFieldName(AbstractBeanPropertyDescriptor $descriptor): string
     {
         return substr($descriptor->getVariableName(), 1);
+    }
+
+    public function getFieldNameFromRelationshipDescriptor(MethodDescriptorInterface $descriptor): string
+    {
+        return lcfirst(substr($descriptor->getName(), 3));
     }
 }

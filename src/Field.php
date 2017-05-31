@@ -3,7 +3,6 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-
 use Youshido\GraphQL\Field\AbstractField;
 use Youshido\GraphQL\Type\AbstractType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
@@ -13,12 +12,14 @@ class Field extends AbstractField
 {
     private $hide = false;
 
-    public function __construct(string $name, TypeInterface $type)
+    public function __construct(string $name, TypeInterface $type, array $additionalConfig = [])
     {
-        parent::__construct([
+        $config = [
             'name' => $name,
             'type' => $type
-        ]);
+        ];
+        $config += $additionalConfig;
+        parent::__construct($config);
     }
     
     /**
