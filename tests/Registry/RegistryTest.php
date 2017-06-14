@@ -50,4 +50,19 @@ class RegistryTest extends TestCase
         $this->expectException(NotFoundException::class);
         $registry->get('notfound');
     }
+
+    public function testGetAuthorization()
+    {
+        $authorizationService = $this->createMock(AuthorizationServiceInterface::class);
+        $registry = new Registry($this->getContainer(), $authorizationService);
+
+        $this->assertSame($authorizationService, $registry->getAuthorizationService());
+
+        $registry = new Registry($this->getContainer());
+
+        $this->assertNull($registry->getAuthorizationService());
+
+    }
+
+
 }
