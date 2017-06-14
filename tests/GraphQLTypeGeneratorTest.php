@@ -7,6 +7,8 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Fixtures\TestSchema;
+use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
+use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
@@ -89,7 +91,8 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $tdbmService = self::getTDBMService();
         $userDao = new UserDao($tdbmService);
-        $processor = new Processor(new TestSchema($userDao));
+        $registry = new Registry(new EmptyContainer());
+        $processor = new Processor(new TestSchema($registry, $userDao));
 
         $introspectionQuery = <<<EOF
 {

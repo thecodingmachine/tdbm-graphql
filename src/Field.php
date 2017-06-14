@@ -21,7 +21,7 @@ class Field extends AbstractField
         ];
 
         if (!isset($additionalConfig['resolve'])) {
-            $config['resolve'] = function($source, array $args, ResolveInfo $info) {
+            $config['resolve'] = function ($source, array $args, ResolveInfo $info) {
                 $getter = 'get'.$info->getField()->getName();
                 return $source->$getter();
             };

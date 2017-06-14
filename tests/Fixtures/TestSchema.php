@@ -3,6 +3,7 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL\Fixtures;
 
+use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use Youshido\GraphQL\Config\Schema\SchemaConfig;
@@ -24,11 +25,16 @@ class TestSchema extends AbstractSchema
      * @var UserDao
      */
     private $userDao;
+    /**
+     * @var Registry
+     */
+    private $registry;
 
-    public function __construct(UserDao $userDao, array $config = [])
+    public function __construct(Registry $registry, UserDao $userDao, array $config = [])
     {
-        parent::__construct($config);
         $this->userDao = $userDao;
+        $this->registry = $registry;
+        parent::__construct($config);
     }
 
     public function build(SchemaConfig $config)
@@ -54,12 +60,11 @@ class TestSchema extends AbstractSchema
         $config->getQuery()
             //->addField(new NodeField($fetcher))
             ->addField('users', [
-                'type'    => new ListType(new UserType()),
+                'type'    => new ListType(new UserType($this->registry)),
                 'resolve' => function () {
                     //return TestDataProvider::getFaction('rebels');
                     return $this->userDao->findAll();
                 }
             ]);
     }
-
 }

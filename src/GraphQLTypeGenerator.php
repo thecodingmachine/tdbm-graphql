@@ -84,10 +84,12 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
             $baseClassName = 'AbstractObjectType';
             $callParentBuild = '';
             $isExtended = false;
+            $parentCall = 'parent::__construct($config);';
         } else {
             $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
             $isExtended = true;
             $callParentBuild = "parent::build(\$config);\n        ";
+            $parentCall = 'parent::__construct($registry, $config);';
         }
 
         // one to many and many to many relationships:
@@ -110,14 +112,22 @@ namespace {$this->generatedNamespace};
 
 //use Youshido\GraphQL\Relay\Connection\Connection;
 //use Youshido\GraphQL\Relay\Connection\ArrayConnection;
+use TheCodingMachine\Tdbm\GraphQL\Field;
+use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\ListType\ListType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
-use TheCodingMachine\Tdbm\GraphQL\Field;
 use Youshido\GraphQL\Type\NonNullType;
 
 abstract class $generatedTypeClassName extends $baseClassName
 {
+    private \$registry;
+
+    public function __construct(Registry \$registry, array \$config = [])
+    {
+        $parentCall
+        \$this->registry = \$registry;
+    }
 
 EOF;
         if (!$isExtended) {
@@ -268,7 +278,7 @@ EOF;
             $newCode = 'new '.$map[$phpType].'()';
         } elseif ($descriptor instanceof ObjectBeanPropertyDescriptor) {
             $beanclassName = $descriptor->getClassName();
-            $newCode = 'new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'()';
+            $newCode = '$this->registry->get(\'\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'\')';
         } else {
             throw new GraphQLGeneratorNamespaceException('Unexpected property descriptor. Cannot handle class '.get_class($descriptor));
         }
@@ -289,12 +299,12 @@ EOF;
         $thisVariableName = '$this->'.$fieldName.'Field';
 
         // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
-        $type = 'new NonNullType(new ListType(new NonNullType(new \\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'())))';
+        $type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\'\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
 
         // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
         /*$code = <<<EOF
     private $variableName;
-        
+
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
@@ -303,7 +313,7 @@ EOF;
                 'resolve' => function (\$value = null, \$args = [], \$type = null) {
                     return ArrayConnection::connectionFromArray(\$value->$getterName(), \$args);
                 }
-            ]);        
+            ]);
         }
         return $thisVariableName;
     }
