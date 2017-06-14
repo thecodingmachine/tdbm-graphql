@@ -81,7 +81,7 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 
         $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
         if ($extendedBeanClassName === null) {
-            $baseClassName = 'AbstractObjectType';
+            $baseClassName = 'YoushidoAbstractObjectType';
             $callParentBuild = '';
             $isExtended = false;
             $parentCall = 'parent::__construct($config);';
@@ -115,7 +115,7 @@ namespace {$this->generatedNamespace};
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\ListType\ListType;
-use Youshido\GraphQL\Type\Object\AbstractObjectType;
+use Youshido\GraphQL\Type\Object\AbstractObjectType as YoushidoAbstractObjectType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use Youshido\GraphQL\Type\NonNullType;
 
