@@ -240,7 +240,7 @@ EOF;
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type);        
+            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);        
         }
         return $thisVariableName;
     }
@@ -326,7 +326,7 @@ EOF;*/
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type);        
+            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);        
         }
         return $thisVariableName;
     }

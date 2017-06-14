@@ -25,13 +25,19 @@ class Registry implements ContainerInterface
      * @var AbstractObjectType[]
      */
     private $values = [];
+    /**
+     * @var null|AuthorizationServiceInterface
+     */
+    private $authorizationService;
 
     /**
      * @param ContainerInterface $container The proxied container.
+     * @param AuthorizationServiceInterface|null $authorizationService
      */
-    public function __construct(ContainerInterface $container)
+    public function __construct(ContainerInterface $container, AuthorizationServiceInterface $authorizationService = null)
     {
         $this->container = $container;
+        $this->authorizationService = $authorizationService;
     }
 
     /**
@@ -86,5 +92,15 @@ class Registry implements ContainerInterface
         }
 
         return false;
+    }
+
+    /**
+     * Returns the authorization service.
+     *
+     * @return AuthorizationServiceInterface|null
+     */
+    public function getAuthorizationService(): ?AuthorizationServiceInterface
+    {
+        return $this->authorizationService;
     }
 }

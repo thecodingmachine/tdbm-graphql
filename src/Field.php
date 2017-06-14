@@ -3,6 +3,7 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Execution\ResolveInfo;
 use Youshido\GraphQL\Field\AbstractField;
 use Youshido\GraphQL\Type\AbstractType;
@@ -12,9 +13,17 @@ use Youshido\GraphQL\Type\TypeInterface;
 class Field extends AbstractField
 {
     private $hide = false;
+    private $right;
 
-    public function __construct(string $name, TypeInterface $type, array $additionalConfig = [])
+    /**
+     * @var Registry
+     */
+    private $registry;
+
+    public function __construct(string $name, TypeInterface $type, Registry $registry, array $additionalConfig = [])
     {
+        $this->registry = $registry;
+
         $config = [
             'name' => $name,
             'type' => $type
@@ -44,7 +53,11 @@ class Field extends AbstractField
      */
     public function isHidden(): bool
     {
-        return $this->hide;
+        $hide = $this->hide;
+        if ($this->right !== null) {
+            $hide |= !$this->registry->getAuthorizationService()->isAllowed($this->right);
+        }
+        return $hide;
     }
 
     /**
@@ -61,5 +74,13 @@ class Field extends AbstractField
     public function show()
     {
         $this->hide = false;
+    }
+
+    public function requiresRight(string $right)
+    {
+        if ($this->registry->getAuthorizationService() === null) {
+            throw new GraphQLException('You did not configure an authorization in the TDBM-GraphQL registry.');
+        }
+        $this->right = $right;
     }
 }

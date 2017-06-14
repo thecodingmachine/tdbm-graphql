@@ -71,6 +71,8 @@ class GraphQLTypeGeneratorTest extends TestCase
 
     public function testGenerate()
     {
+        $this->recursiveDelete(__DIR__.'/../src/Tests/GraphQL/');
+
         $tdbmService = self::getTDBMService();
         $tdbmService->generateAllDaosAndBeans();
 
@@ -153,5 +155,26 @@ EOF;
         $response = $processor->processPayload($introspectionQuery3, [])->getResponseData();
         $this->assertSame('John Smith', $response['data']['users'][0]['name']);
         $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
+    }
+
+    /**
+     * Delete a file or recursively delete a directory.
+     *
+     * @param string $str Path to file or directory
+     * @return bool
+     */
+    private function recursiveDelete(string $str) : bool
+    {
+        if (is_file($str)) {
+            return @unlink($str);
+        } elseif (is_dir($str)) {
+            $scan = glob(rtrim($str, '/') . '/*');
+            foreach ($scan as $index => $path) {
+                $this->recursiveDelete($path);
+            }
+
+            return @rmdir($str);
+        }
+        return false;
     }
 }
