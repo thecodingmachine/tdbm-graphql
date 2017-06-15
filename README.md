@@ -15,3 +15,16 @@ TDBM-GraphQL
 GraphQL bridge between TDBM and Youshido/graphql library.
 
 This library will generate GraphQL types based on your database model.
+
+
+Troubleshooting
+---------------
+
+### Error: Maximum function nesting level of '100' reached
+
+Youshido's GraphQL library tends to use a very deep stack. This error does not necessarily mean your code is going into an infinite loop.
+Simply try to increase the maximum allowed nesting level in your XDebug conf:
+
+```
+xdebug.max_nesting_level=500
+```
