@@ -2,6 +2,7 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use Mouf\Composer\ClassNameMapper;
+use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\TDBM\ConfigurationInterface;
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
@@ -41,6 +42,7 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
      * @param string $namespace The namespace the type classes will be written in.
      * @param string|null $generatedNamespace The namespace the generated type classes will be written in (defaults to $namespace + '\Generated')
      * @param NamingStrategyInterface|null $namingStrategy
+     * @param ClassNameMapper|null $classNameMapper
      */
     public function __construct(string $namespace, ?string $generatedNamespace = null, ?NamingStrategyInterface $namingStrategy = null, ?ClassNameMapper $classNameMapper = null)
     {
@@ -59,6 +61,15 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
      * @param BeanDescriptorInterface[] $beanDescriptors
      */
     public function onGenerate(ConfigurationInterface $configuration, array $beanDescriptors): void
+    {
+        $this->generateTypes($beanDescriptors);
+        $this->generateTypeMapper($beanDescriptors);
+    }
+
+    /**
+     * @param BeanDescriptorInterface[] $beanDescriptors
+     */
+    private function generateTypes(array $beanDescriptors): void
     {
         foreach ($beanDescriptors as $beanDescriptor) {
             $this->generateAbstractTypeFile($beanDescriptor);
@@ -231,7 +242,6 @@ EOF;
         $variableName = $descriptor->getVariableName().'Field';
         $thisVariableName = '$this->'.substr($descriptor->getVariableName().'Field', 1);
 
-        // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
         $type = $this->getType($descriptor);
 
         $code = <<<EOF
@@ -298,7 +308,6 @@ EOF;
         $variableName = '$'.$fieldName.'Field';
         $thisVariableName = '$this->'.$fieldName.'Field';
 
-        // TODO: we might want to not do a NEW for each type but fetch it from the container (for instance)
         $type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\'\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
 
         // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
@@ -335,5 +344,74 @@ EOF;*/
 EOF;
 
         return $code;
+    }
+
+    /**
+     * @param BeanDescriptorInterface[] $beanDescriptors
+     */
+    private function generateTypeMapper(array $beanDescriptors)
+    {
+        $mapCode = '';
+
+        foreach ($beanDescriptors as $beanDescriptor) {
+            $fqcn = $beanDescriptor->getBeanNamespace().'\\'.$beanDescriptor->getBeanClassName();
+            $graphqlType = $this->namespace.'\\'.$this->namingStrategy->getClassName($beanDescriptor->getBeanClassName());
+
+            $beanToGraphQLMap[$fqcn] = $graphqlType;
+            $mapCode .= '            '.var_export($fqcn, true ).' => '.var_export($graphqlType, true ).",\n";
+        }
+
+
+        $str = <<<EOF
+<?php
+namespace {$this->namespace};
+
+use Psr\Container\ContainerInterface;
+use TheCodingMachine\GraphQL\Controllers\TypeMapperInterface;
+use TheCodingMachine\Tdbm\GraphQL\GraphQLException;
+use Youshido\GraphQL\Type\TypeInterface;
+
+class TdbmGraphQLTypeMapper implements TypeMapperInterface
+{
+    /**
+     * @var ContainerInterface
+     */
+    private \$container;
+
+    public function __construct(ContainerInterface \$container)
+    {
+        \$this->container = \$container;
+    }
+
+    /**
+     * Maps a PHP fully qualified class name to a GraphQL type.
+     *
+     * @param string \$className
+     * @return TypeInterface
+     */
+    public function mapClassToType(string \$className): TypeInterface
+    {
+        \$map = [
+$mapCode
+        ];
+        
+        if (!isset(\$map[\$className])) {
+            throw new GraphQLException("Unable to map class \$className to any known GraphQL type.");
+        }
+        return \$this->container->get(\$map[\$className]);
+    }
+}
+
+EOF;
+
+        $classMapperFqcn = $this->namespace.'\\TdbmGraphQLTypeMapper';
+
+        $fileSystem = new Filesystem();
+        $filePaths = $this->classNameMapper->getPossibleFileNames($classMapperFqcn);
+        if (empty($filePaths)) {
+            throw new GraphQLGeneratorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
+        }
+        $filePath = $filePaths[0];
+        $fileSystem->dumpFile($filePath, $str);
     }
 }

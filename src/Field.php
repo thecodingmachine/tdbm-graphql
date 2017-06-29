@@ -79,7 +79,7 @@ class Field extends AbstractField
     public function requiresRight(string $right)
     {
         if ($this->registry->getAuthorizationService() === null) {
-            throw new GraphQLException('You did not configure an authorization in the TDBM-GraphQL registry.');
+            throw new GraphQLException('You did not configure an authorization service in the TDBM-GraphQL registry.');
         }
         $this->right = $right;
     }
