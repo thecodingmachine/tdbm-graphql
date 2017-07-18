@@ -3,7 +3,6 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 
 abstract class TdbmObjectType extends AbstractObjectType
