@@ -12,7 +12,7 @@ use Youshido\GraphQL\Type\TypeInterface;
 
 class Field extends AbstractField
 {
-    private $hide = false;
+    private $hide = true;
     private $right;
 
     /**
