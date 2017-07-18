@@ -23,13 +23,12 @@ class FieldTest extends TestCase
 
         $field = new Field('test', new StringType(), $registry);
 
-        $this->assertFalse($field->isHidden());
-        $field->hide();
         $this->assertTrue($field->isHidden());
         $field->show();
         $this->assertFalse($field->isHidden());
+        $field->hide();
+        $this->assertTrue($field->isHidden());
 
         $field->requiresRight('nope');
-
     }
 }

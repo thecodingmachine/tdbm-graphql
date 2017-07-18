@@ -61,8 +61,5 @@ class RegistryTest extends TestCase
         $registry = new Registry($this->getContainer());
 
         $this->assertNull($registry->getAuthorizationService());
-
     }
-
-
 }

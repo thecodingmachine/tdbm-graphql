@@ -92,7 +92,7 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 
         $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
         if ($extendedBeanClassName === null) {
-            $baseClassName = 'YoushidoAbstractObjectType';
+            $baseClassName = 'TdbmObjectType';
             $callParentBuild = '';
             $isExtended = false;
             $parentCall = 'parent::__construct($config);';
@@ -124,9 +124,9 @@ namespace {$this->generatedNamespace};
 //use Youshido\GraphQL\Relay\Connection\Connection;
 //use Youshido\GraphQL\Relay\Connection\ArrayConnection;
 use TheCodingMachine\Tdbm\GraphQL\Field;
+use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\ListType\ListType;
-use Youshido\GraphQL\Type\Object\AbstractObjectType as YoushidoAbstractObjectType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use Youshido\GraphQL\Type\NonNullType;
 
@@ -164,11 +164,19 @@ EOF;
     {
         $callParentBuild
         \$this->alter();
-        \$config->addFields(array_filter([
-$fieldFetcherCode
-        ], function(\$field) {
+        \$config->addFields(array_filter(\$this->getFieldList(), function(\$field) {
             return !\$field->isHidden();
         }));
+    }
+    
+    /**
+     * @return Field[]
+     */
+    protected function getFieldList(): array
+    {
+        return array_merge(parent::getFieldList(), [
+$fieldFetcherCode
+        ]);
     }
     
 $fieldsCode
@@ -227,6 +235,7 @@ class $typeClassName extends $generatedTypeClassName
     public function alter(): void
     {
         $alterParentCall// You can alter the fields of this type here.
+        \$this->showAll();
     }
 }
 
@@ -358,7 +367,7 @@ EOF;
             $graphqlType = $this->namespace.'\\'.$this->namingStrategy->getClassName($beanDescriptor->getBeanClassName());
 
             $beanToGraphQLMap[$fqcn] = $graphqlType;
-            $mapCode .= '            '.var_export($fqcn, true ).' => '.var_export($graphqlType, true ).",\n";
+            $mapCode .= '            '.var_export($fqcn, true).' => '.var_export($graphqlType, true).",\n";
         }
 
 
