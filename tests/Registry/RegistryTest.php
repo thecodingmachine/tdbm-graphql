@@ -4,6 +4,7 @@ namespace TheCodingMachine\Tdbm\GraphQL\Registry;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
 use TheCodingMachine\Tdbm\GraphQL\Fixtures\TestType;
 
 class RegistryTest extends TestCase
