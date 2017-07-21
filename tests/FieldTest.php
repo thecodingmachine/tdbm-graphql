@@ -3,7 +3,7 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use PHPUnit\Framework\TestCase;
-use TheCodingMachine\Tdbm\GraphQL\Registry\AuthorizationServiceInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\Scalar\StringType;
