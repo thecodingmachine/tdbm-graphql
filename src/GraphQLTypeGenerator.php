@@ -285,7 +285,7 @@ EOF;
                 //'array' => StringT,
                 'string' => '\\'.StringType::class,
                 'bool' => '\\'.BooleanType::class,
-                '\DateTimeInterface' => '\\'.DateTimeType::class,
+                '\DateTimeImmutable' => '\\'.DateTimeType::class,
                 'float' => '\\'.FloatType::class,
                 'int' => '\\'.IntType::class,
             ];
