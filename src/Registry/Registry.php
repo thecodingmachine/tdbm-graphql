@@ -6,6 +6,7 @@ namespace TheCodingMachine\Tdbm\GraphQL\Registry;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 
 /**
