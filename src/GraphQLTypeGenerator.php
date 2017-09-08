@@ -375,39 +375,15 @@ EOF;
 <?php
 namespace {$this->namespace};
 
-use Psr\Container\ContainerInterface;
-use TheCodingMachine\GraphQL\Controllers\TypeMapperInterface;
-use TheCodingMachine\Tdbm\GraphQL\GraphQLException;
-use Youshido\GraphQL\Type\TypeInterface;
+use TheCodingMachine\Tdbm\GraphQL\AbstractTdbmGraphQLTypeMapper;
 
-class TdbmGraphQLTypeMapper implements TypeMapperInterface
+class TdbmGraphQLTypeMapper extends AbstractTdbmGraphQLTypeMapper
 {
-    /**
-     * @var ContainerInterface
-     */
-    private \$container;
-
-    public function __construct(ContainerInterface \$container)
+    protected function getMap(): array
     {
-        \$this->container = \$container;
-    }
-
-    /**
-     * Maps a PHP fully qualified class name to a GraphQL type.
-     *
-     * @param string \$className
-     * @return TypeInterface
-     */
-    public function mapClassToType(string \$className): TypeInterface
-    {
-        \$map = [
+        return [
 $mapCode
         ];
-        
-        if (!isset(\$map[\$className])) {
-            throw new GraphQLException("Unable to map class \$className to any known GraphQL type.");
-        }
-        return \$this->container->get(\$map[\$className]);
     }
 }
 
