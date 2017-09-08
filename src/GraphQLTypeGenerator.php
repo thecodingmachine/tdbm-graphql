@@ -162,8 +162,7 @@ EOF;
      */
     public function build(\$config)
     {
-        $callParentBuild
-        \$this->alter();
+        $callParentBuild\$this->alter();
         \$config->addFields(array_filter(\$this->getFieldList(), function(\$field) {
             return !\$field->isHidden();
         }));
@@ -259,7 +258,7 @@ EOF;
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);        
+            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);
         }
         return $thisVariableName;
     }
@@ -344,7 +343,7 @@ EOF;*/
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);        
+            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);
         }
         return $thisVariableName;
     }
