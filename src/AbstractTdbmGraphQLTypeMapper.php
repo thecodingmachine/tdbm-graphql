@@ -3,7 +3,6 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-
 use Psr\Container\ContainerInterface;
 use Youshido\GraphQL\Type\InputObject\InputObjectType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;

@@ -30,6 +30,5 @@ class FieldTest extends TestCase
         $this->assertFalse($field->isHidden());
 
         $field->requiresRight('nope');
-
     }
 }

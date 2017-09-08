@@ -358,7 +358,7 @@ EOF;
             $graphqlType = $this->namespace.'\\'.$this->namingStrategy->getClassName($beanDescriptor->getBeanClassName());
 
             $beanToGraphQLMap[$fqcn] = $graphqlType;
-            $mapCode .= '            '.var_export($fqcn, true ).' => '.var_export($graphqlType, true ).",\n";
+            $mapCode .= '            '.var_export($fqcn, true).' => '.var_export($graphqlType, true).",\n";
         }
 
 
