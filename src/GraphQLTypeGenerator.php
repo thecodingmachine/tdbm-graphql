@@ -132,7 +132,7 @@ use Youshido\GraphQL\Type\NonNullType;
 
 abstract class $generatedTypeClassName extends $baseClassName
 {
-    private \$registry;
+    protected \$registry;
 
     public function __construct(Registry \$registry, array \$config = [])
     {
@@ -297,7 +297,7 @@ EOF;
             $newCode = 'new '.$map[$phpType].'()';
         } elseif ($descriptor instanceof ObjectBeanPropertyDescriptor) {
             $beanclassName = $descriptor->getClassName();
-            $newCode = '$this->registry->get(\'\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'\')';
+            $newCode = '$this->registry->get(\''.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'\')';
         } else {
             throw new GraphQLGeneratorNamespaceException('Unexpected property descriptor. Cannot handle class '.get_class($descriptor));
         }
@@ -317,7 +317,7 @@ EOF;
         $variableName = '$'.$fieldName.'Field';
         $thisVariableName = '$this->'.$fieldName.'Field';
 
-        $type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\'\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
+        $type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\''.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
 
         // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
         /*$code = <<<EOF
