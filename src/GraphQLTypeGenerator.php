@@ -163,7 +163,7 @@ EOF;
     public function build(\$config)
     {
         $callParentBuild\$this->alter();
-        \$config->addFields(array_filter(\$this->getFieldList(), function(\$field) {
+        \$config->addFields(array_filter(\$this->getFieldList(), function (\$field) {
             return !\$field->isHidden();
         }));
     }
