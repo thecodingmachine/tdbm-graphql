@@ -180,9 +180,9 @@ $fieldFetcherCode
     
 $fieldsCode
 $relationshipsCode
-}
-
 EOF;
+
+        $str = rtrim($str, "\n ")."\n}\n";
 
         $fileSystem = new Filesystem();
 
