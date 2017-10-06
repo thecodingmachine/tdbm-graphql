@@ -252,6 +252,10 @@ EOF;
 
         $type = $this->getType($descriptor);
 
+        if ($type === null) {
+            return "    // Field $getterName is ignored. Cannot represent a JSON field in GraphQL.";
+        }
+
         $code = <<<EOF
     private $variableName;
         
@@ -269,7 +273,7 @@ EOF;
         return $code;
     }
 
-    private function getType(AbstractBeanPropertyDescriptor $descriptor)
+    private function getType(AbstractBeanPropertyDescriptor $descriptor) : ?string
     {
         // FIXME: can there be several primary key? If yes, we might need to fix this.
         // Also, primary key should be named "ID"
@@ -279,9 +283,12 @@ EOF;
 
         $phpType = $descriptor->getPhpType();
         if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
+            if ($phpType === 'array') {
+                // JSON type cannot be casted since GraphQL does not allow for untyped arrays.
+                return null;
+            }
+
             $map = [
-                // TODO: how to handle JSON properties???
-                //'array' => StringT,
                 'string' => '\\'.StringType::class,
                 'bool' => '\\'.BooleanType::class,
                 '\DateTimeImmutable' => '\\'.DateTimeType::class,
