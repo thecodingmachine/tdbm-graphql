@@ -158,7 +158,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `login` varchar(255) NOT NULL,
   `password` varchar(255) DEFAULT NULL,
   `status` varchar(10) DEFAULT NULL,
-  `country_id` int(11) NOT NULL
+  `country_id` int(11) NOT NULL,
+  `additional_data` JSON NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------

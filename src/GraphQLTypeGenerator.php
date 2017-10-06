@@ -86,6 +86,9 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor->getBeanClassName()), true);
 
         $properties = $beanDescriptor->getExposedProperties();
+
+        $properties = array_filter($properties, [$this, 'canBeCastToGraphQL']);
+
         $fieldsCodes = array_map([$this, 'generateFieldCode'], $properties);
 
         $fieldsCode = implode('', $fieldsCodes);
@@ -241,6 +244,21 @@ class $typeClassName extends $generatedTypeClassName
 EOF;
 
         $fileSystem->dumpFile($filePaths[0], $str);
+    }
+
+    /**
+     * Some fields cannot be bound to GraphQL fields (for instance JSON fields)
+     */
+    private function canBeCastToGraphQL(AbstractBeanPropertyDescriptor $descriptor) : bool
+    {
+        if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
+            $phpType = $descriptor->getPhpType();
+            if ($phpType === 'array') {
+                // JSON type cannot be casted since GraphQL does not allow for untyped arrays.
+                return false;
+            }
+        }
+        return true;
     }
 
     private function generateFieldCode(AbstractBeanPropertyDescriptor $descriptor) : string
