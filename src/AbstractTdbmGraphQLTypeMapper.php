@@ -99,7 +99,7 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
 
         $this->typeToInputTypes->attach($type, $inputType);
 
-        $inputFields = array_map(function(\Youshido\GraphQL\Field\FieldInterface $field) {
+        $inputFields = array_map(function (\Youshido\GraphQL\Field\FieldInterface $field) {
             $type = $field->getType();
             /*if ($type instanceof NonNullType) {
                 return new NonNullType($this->mapTypeToInputType($type->getNullableType()));
