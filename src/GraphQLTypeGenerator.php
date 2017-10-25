@@ -98,12 +98,10 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
             $baseClassName = 'TdbmObjectType';
             $callParentBuild = '';
             $isExtended = false;
-            $parentCall = 'parent::__construct($config);';
         } else {
             $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
             $isExtended = true;
             $callParentBuild = "parent::build(\$config);\n        ";
-            $parentCall = 'parent::__construct($registry, $config);';
         }
 
         // one to many and many to many relationships:
@@ -135,17 +133,18 @@ use Youshido\GraphQL\Type\NonNullType;
 
 abstract class $generatedTypeClassName extends $baseClassName
 {
-    protected \$registry;
-
-    public function __construct(Registry \$registry, array \$config = [])
-    {
-        $parentCall
-        \$this->registry = \$registry;
-    }
 
 EOF;
         if (!$isExtended) {
             $str .= <<<EOF
+    protected \$registry;
+
+    public function __construct(Registry \$registry, array \$config = [])
+    {
+        parent::__construct(\$config);
+        \$this->registry = \$registry;
+    }
+
     /**
      * Alters the list of properties for this type.
      */
