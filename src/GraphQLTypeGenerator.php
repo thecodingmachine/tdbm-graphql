@@ -86,6 +86,9 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor->getBeanClassName()), true);
 
         $properties = $beanDescriptor->getExposedProperties();
+
+        $properties = array_filter($properties, [$this, 'canBeCastToGraphQL']);
+
         $fieldsCodes = array_map([$this, 'generateFieldCode'], $properties);
 
         $fieldsCode = implode('', $fieldsCodes);
@@ -95,12 +98,10 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
             $baseClassName = 'TdbmObjectType';
             $callParentBuild = '';
             $isExtended = false;
-            $parentCall = 'parent::__construct($config);';
         } else {
             $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
             $isExtended = true;
             $callParentBuild = "parent::build(\$config);\n        ";
-            $parentCall = 'parent::__construct($registry, $config);';
         }
 
         // one to many and many to many relationships:
@@ -132,17 +133,18 @@ use Youshido\GraphQL\Type\NonNullType;
 
 abstract class $generatedTypeClassName extends $baseClassName
 {
-    protected \$registry;
-
-    public function __construct(Registry \$registry, array \$config = [])
-    {
-        $parentCall
-        \$this->registry = \$registry;
-    }
 
 EOF;
         if (!$isExtended) {
             $str .= <<<EOF
+    protected \$registry;
+
+    public function __construct(Registry \$registry, array \$config = [])
+    {
+        parent::__construct(\$config);
+        \$this->registry = \$registry;
+    }
+
     /**
      * Alters the list of properties for this type.
      */
@@ -241,6 +243,21 @@ class $typeClassName extends $generatedTypeClassName
 EOF;
 
         $fileSystem->dumpFile($filePaths[0], $str);
+    }
+
+    /**
+     * Some fields cannot be bound to GraphQL fields (for instance JSON fields)
+     */
+    private function canBeCastToGraphQL(AbstractBeanPropertyDescriptor $descriptor) : bool
+    {
+        if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
+            $phpType = $descriptor->getPhpType();
+            if ($phpType === 'array') {
+                // JSON type cannot be casted since GraphQL does not allow for untyped arrays.
+                return false;
+            }
+        }
+        return true;
     }
 
     private function generateFieldCode(AbstractBeanPropertyDescriptor $descriptor) : string
