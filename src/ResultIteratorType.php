@@ -37,8 +37,7 @@ class ResultIteratorType extends AbstractObjectType
         $config->addField('count', [
             'type' => new IntType(),
             'description' => 'Returns the total number of items in the collection.',
-            'resolve' => function (ResultIterator $source, $args, $info)
-            {
+            'resolve' => function (ResultIterator $source, $args, $info) {
                 return $source->count();
             }
         ]);
@@ -50,8 +49,7 @@ class ResultIteratorType extends AbstractObjectType
                 'offset' => new IntType(),
                 'order' => new StringType(),
             ],
-            'resolve' => function (ResultIterator $source, $args, $info)
-            {
+            'resolve' => function (ResultIterator $source, $args, $info) {
                 if (isset($args['order'])) {
                     $source = $source->withOrder($args['order']);
                 }

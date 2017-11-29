@@ -215,6 +215,5 @@ EOF;
 
         $this->expectException(GraphQLException::class);
         $result = $itemsField->resolve($countries, ['offset'=>1], $resolveInfo);
-
     }
 }
