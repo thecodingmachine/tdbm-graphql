@@ -13,6 +13,7 @@ use Youshido\GraphQL\Type\Object\AbstractObjectType;
  * The role of the registry is to provide access to all GraphQL types.
  * If the type is not found, it can be queried from the container, or if not in the container, it can be created from the Registry itself.
  *
+ * @deprecated Use TheCodingMachine\GraphQL\Controllers\Registry instead
  */
 class Registry implements ContainerInterface
 {
