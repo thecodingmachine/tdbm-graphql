@@ -9,14 +9,20 @@ use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Fixtures\TestSchema;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
+use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\CountryDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
+use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\CountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\TdbmGraphQLTypeMapper;
 use TheCodingMachine\TDBM\TDBMService;
 use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy as TdbmDefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
+use Youshido\GraphQL\Execution\Context\ExecutionContext;
 use Youshido\GraphQL\Execution\Processor;
+use Youshido\GraphQL\Execution\ResolveInfo;
+use Youshido\GraphQL\Schema\Schema;
 use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
@@ -181,5 +187,34 @@ EOF;
             return @rmdir($str);
         }
         return false;
+    }
+
+    public function testResultIteratorType()
+    {
+        $type = new ResultIteratorType(new CountryType(new Registry(new EmptyContainer())));
+
+        $tdbmService = self::getTDBMService();
+        $countryDao = new CountryDao($tdbmService);
+
+        $countries = $countryDao->findAll();
+
+        $countField = $type->getField('count');
+        $resolveInfo = $this->getMockBuilder(ResolveInfo::class)->disableOriginalConstructor()->getMock();
+        $this->assertEquals(3, $countField->resolve($countries, [], $resolveInfo));
+
+        $itemsField = $type->getField('items');
+        $result = $itemsField->resolve($countries, [], $resolveInfo);
+        $this->assertCount(3, $result);
+        $this->assertInstanceOf(Country::class, $result[0]);
+
+        $result = $itemsField->resolve($countries, ['order'=>'label'], $resolveInfo);
+        $this->assertEquals('Jamaica', $result[1]->getLabel());
+
+        $result = $itemsField->resolve($countries, ['offset'=>1, 'limit'=>1], $resolveInfo);
+        $this->assertCount(1, $result);
+
+        $this->expectException(GraphQLException::class);
+        $result = $itemsField->resolve($countries, ['offset'=>1], $resolveInfo);
+
     }
 }
