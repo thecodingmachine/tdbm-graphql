@@ -38,7 +38,7 @@ class ResultIteratorType extends AbstractObjectType
             'type' => new IntType(),
             'description' => 'Returns the total number of items in the collection.',
             'resolve' => function (ResultIterator $source, $args, $info) {
-                return $source->count();
+                return (int) $source->count();
             }
         ]);
         $config->addField('items', [
