@@ -270,7 +270,7 @@ EOF;
         $type = $this->getType($descriptor);
 
         if ($type === null) {
-            return "    // Field $getterName is ignored. Cannot represent a JSON field in GraphQL.";
+            return "    // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.";
         }
 
         $code = <<<EOF
@@ -283,7 +283,6 @@ EOF;
         }
         return $thisVariableName;
     }
-
 
 EOF;
 
@@ -300,8 +299,8 @@ EOF;
 
         $phpType = $descriptor->getPhpType();
         if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
-            if ($phpType === 'array') {
-                // JSON type cannot be casted since GraphQL does not allow for untyped arrays.
+            if ($phpType === 'array' || $phpType === 'resource') {
+                // JSON and BLOB type cannot be casted since GraphQL does not allow for untyped arrays or BLOB.
                 return null;
             }
 
@@ -314,7 +313,7 @@ EOF;
             ];
 
             if (!isset($map[$phpType])) {
-                throw new GraphQLGeneratorNamespaceException("Cannot map PHP type '$phpType' to any known GraphQL type.");
+                throw new GraphQLGeneratorNamespaceException("Cannot map PHP type '$phpType' to any known GraphQL type in table '{$descriptor->getTable()->getName()}' for column '{$descriptor->getColumnName()}'.");
             }
 
             $newCode = 'new '.$map[$phpType].'()';
