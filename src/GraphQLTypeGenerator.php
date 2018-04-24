@@ -270,7 +270,10 @@ EOF;
         $type = $this->getType($descriptor);
 
         if ($type === null) {
-            return "    // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.";
+            return <<<EOF
+    // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.
+
+EOF;
         }
 
         $code = <<<EOF
