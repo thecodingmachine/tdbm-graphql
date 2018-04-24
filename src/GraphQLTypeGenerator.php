@@ -252,8 +252,8 @@ EOF;
     {
         if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
             $phpType = $descriptor->getPhpType();
-            if ($phpType === 'array') {
-                // JSON type cannot be casted since GraphQL does not allow for untyped arrays.
+            if ($phpType === 'array' || $phpType === 'resource') {
+                // JSON or BLOB types cannot be casted since GraphQL does not allow for untyped arrays or BLOB.
                 return false;
             }
         }
@@ -270,7 +270,10 @@ EOF;
         $type = $this->getType($descriptor);
 
         if ($type === null) {
-            return "    // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.";
+            return <<<EOF
+    // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.
+
+EOF;
         }
 
         $code = <<<EOF
