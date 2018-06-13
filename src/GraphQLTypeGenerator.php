@@ -125,7 +125,6 @@ namespace {$this->generatedNamespace};
 use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
-use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\ListType\ListType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use Youshido\GraphQL\Type\NonNullType;
