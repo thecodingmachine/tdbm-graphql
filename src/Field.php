@@ -3,6 +3,7 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Execution\ResolveInfo;
 use Youshido\GraphQL\Field\AbstractField;
@@ -16,11 +17,11 @@ class Field extends AbstractField
     private $right;
 
     /**
-     * @var Registry
+     * @var RegistryInterface
      */
     private $registry;
 
-    public function __construct(string $name, TypeInterface $type, Registry $registry, array $additionalConfig = [])
+    public function __construct(string $name, TypeInterface $type, RegistryInterface $registry, array $additionalConfig = [])
     {
         $this->registry = $registry;
 

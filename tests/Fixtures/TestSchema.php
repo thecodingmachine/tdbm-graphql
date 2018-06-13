@@ -3,7 +3,7 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL\Fixtures;
 
-use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
+use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use Youshido\GraphQL\Config\Schema\SchemaConfig;
@@ -26,11 +26,11 @@ class TestSchema extends AbstractSchema
      */
     private $userDao;
     /**
-     * @var Registry
+     * @var RegistryInterface
      */
     private $registry;
 
-    public function __construct(Registry $registry, UserDao $userDao, array $config = [])
+    public function __construct(RegistryInterface $registry, UserDao $userDao, array $config = [])
     {
         $this->userDao = $userDao;
         $this->registry = $registry;
