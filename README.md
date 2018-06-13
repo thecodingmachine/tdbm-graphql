@@ -2,9 +2,9 @@
 [![Total Downloads](https://poser.pugx.org/thecodingmachine/tdbm-graphql/downloads)](https://packagist.org/packages/thecodingmachine/tdbm-graphql)
 [![Latest Unstable Version](https://poser.pugx.org/thecodingmachine/tdbm-graphql/v/unstable)](https://packagist.org/packages/thecodingmachine/tdbm-graphql)
 [![License](https://poser.pugx.org/thecodingmachine/tdbm-graphql/license)](https://packagist.org/packages/thecodingmachine/tdbm-graphql)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/thecodingmachine/tdbm-graphql/badges/quality-score.png?b=1.x)](https://scrutinizer-ci.com/g/thecodingmachine/tdbm-graphql/?branch=1.x)
-[![Build Status](https://travis-ci.org/thecodingmachine/tdbm-graphql.svg?branch=1.x)](https://travis-ci.org/thecodingmachine/tdbm-graphql)
-[![Coverage Status](https://coveralls.io/repos/thecodingmachine/tdbm-graphql/badge.svg?branch=1.x&service=github)](https://coveralls.io/github/thecodingmachine/tdbm-graphql?branch=1.x)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/thecodingmachine/tdbm-graphql/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/thecodingmachine/tdbm-graphql/?branch=master)
+[![Build Status](https://travis-ci.org/thecodingmachine/tdbm-graphql.svg?branch=master)](https://travis-ci.org/thecodingmachine/tdbm-graphql)
+[![Coverage Status](https://coveralls.io/repos/thecodingmachine/tdbm-graphql/badge.svg?branch=master&service=github)](https://coveralls.io/github/thecodingmachine/tdbm-graphql?branch=master)
 
 
 TDBM-GraphQL

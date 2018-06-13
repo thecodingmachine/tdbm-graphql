@@ -3,9 +3,9 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-use Youshido\GraphQL\Type\Object\AbstractObjectType;
+use TheCodingMachine\GraphQL\Controllers\AbstractAnnotatedObjectType;
 
-abstract class TdbmObjectType extends AbstractObjectType
+abstract class TdbmObjectType extends AbstractAnnotatedObjectType
 {
     /**
      * Returns the list of fields coming from TDBM beans.
