@@ -124,6 +124,7 @@ namespace {$this->generatedNamespace};
 
 //use Youshido\GraphQL\Relay\Connection\Connection;
 //use Youshido\GraphQL\Relay\Connection\ArrayConnection;
+use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
@@ -137,12 +138,10 @@ abstract class $generatedTypeClassName extends $baseClassName
 EOF;
         if (!$isExtended) {
             $str .= <<<EOF
-    protected \$registry;
 
-    public function __construct(Registry \$registry, array \$config = [])
+    public function __construct(RegistryInterface \$registry)
     {
-        parent::__construct(\$config);
-        \$this->registry = \$registry;
+        parent::__construct(\$registry);
     }
 
     /**

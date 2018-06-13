@@ -104,7 +104,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $tdbmService = self::getTDBMService();
         $userDao = new UserDao($tdbmService);
-        $registry = new Registry(new EmptyContainer());
+        $registry = TestRegistryFactory::build();
         $processor = new Processor(new TestSchema($registry, $userDao));
 
         $introspectionQuery = <<<EOF
@@ -191,7 +191,7 @@ EOF;
 
     public function testResultIteratorType()
     {
-        $type = new ResultIteratorType(new CountryType(new Registry(new EmptyContainer())));
+        $type = new ResultIteratorType(new CountryType(TestRegistryFactory::build()));
 
         $tdbmService = self::getTDBMService();
         $countryDao = new CountryDao($tdbmService);

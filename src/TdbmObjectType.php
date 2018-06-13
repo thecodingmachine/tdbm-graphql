@@ -4,9 +4,23 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use TheCodingMachine\GraphQL\Controllers\AbstractAnnotatedObjectType;
+use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 
 abstract class TdbmObjectType extends AbstractAnnotatedObjectType
 {
+    /**
+     * Registry is exposed via protected field.
+     *
+     * @var RegistryInterface
+     */
+    protected $registry;
+
+    public function __construct(RegistryInterface $registry)
+    {
+        $this->registry = $registry;
+        parent::__construct($registry);
+    }
+
     /**
      * Returns the list of fields coming from TDBM beans.
      *

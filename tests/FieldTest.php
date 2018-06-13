@@ -3,9 +3,10 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use PHPUnit\Framework\TestCase;
+use TheCodingMachine\GraphQL\Controllers\Registry\Registry;
 use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthenticationService;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
-use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use Youshido\GraphQL\Type\Scalar\StringType;
 
 class FieldTest extends TestCase
@@ -19,7 +20,7 @@ class FieldTest extends TestCase
             }
         };
 
-        $registry = new Registry(new EmptyContainer(), $authorizationService);
+        $registry = TestRegistryFactory::build(null, $authorizationService);
 
         $field = new Field('test', new StringType(), $registry);
 
