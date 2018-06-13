@@ -32,10 +32,14 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
      */
     abstract protected function getMap(): array;
 
-    public function __construct(ContainerInterface $container)
+    public function __construct()
+    {
+        $this->typeToInputTypes = new \SplObjectStorage();
+    }
+
+    public function setContainer(ContainerInterface $container)
     {
         $this->container = $container;
-        $this->typeToInputTypes = new \SplObjectStorage();
     }
 
     /**
