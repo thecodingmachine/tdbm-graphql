@@ -96,12 +96,10 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
         if ($extendedBeanClassName === null) {
             $baseClassName = 'TdbmObjectType';
-            $callParentBuild = '';
             $isExtended = false;
         } else {
             $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
             $isExtended = true;
-            $callParentBuild = "parent::build(\$config);\n        ";
         }
 
         // one to many and many to many relationships:
@@ -163,7 +161,8 @@ EOF;
      */
     public function build(\$config)
     {
-        $callParentBuild\$this->alter();
+        parent::build(\$config);
+        \$this->alter();
         \$config->addFields(array_filter(\$this->getFieldList(), function (\$field) {
             return !\$field->isHidden();
         }));
