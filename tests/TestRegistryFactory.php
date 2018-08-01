@@ -7,13 +7,14 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
 use Psr\Container\ContainerInterface;
 use TheCodingMachine\GraphQL\Controllers\HydratorInterface;
+use TheCodingMachine\GraphQL\Controllers\Mappers\StaticTypeMapper;
 use TheCodingMachine\GraphQL\Controllers\Registry\EmptyContainer;
 use TheCodingMachine\GraphQL\Controllers\Registry\Registry;
 use TheCodingMachine\GraphQL\Controllers\Security\AuthenticationServiceInterface;
 use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
 use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthenticationService;
 use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthorizationService;
-use TheCodingMachine\GraphQL\Controllers\TypeMapperInterface;
+use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
 use Youshido\GraphQL\Type\InputTypeInterface;
 use Youshido\GraphQL\Type\TypeInterface;
 
@@ -30,30 +31,7 @@ class TestRegistryFactory
         $authorizationService = $authorizationService ?: new VoidAuthorizationService();
         $authenticationService = $authenticationService ?: new VoidAuthenticationService();
         $reader = new AnnotationReader();
-        $typeMapper = $typeMapper ?: new class implements TypeMapperInterface {
-
-            /**
-             * Maps a PHP fully qualified class name to a GraphQL type.
-             *
-             * @param string $className
-             * @return TypeInterface
-             */
-            public function mapClassToType(string $className): TypeInterface
-            {
-                throw new \RuntimeException('Not implemented');
-            }
-
-            /**
-             * Maps a PHP fully qualified class name to a GraphQL input type.
-             *
-             * @param string $className
-             * @return InputTypeInterface
-             */
-            public function mapClassToInputType(string $className): InputTypeInterface
-            {
-                throw new \RuntimeException('Not implemented');
-            }
-        };
+        $typeMapper = $typeMapper ?: new StaticTypeMapper();
         $hydrator = $hydrator ?: new class implements HydratorInterface {
 
             /**

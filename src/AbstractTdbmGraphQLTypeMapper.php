@@ -4,14 +4,13 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use Psr\Container\ContainerInterface;
-use TheCodingMachine\GraphQL\Controllers\TypeMapperInterface;
+use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
 use Youshido\GraphQL\Type\InputObject\InputObjectType;
 use Youshido\GraphQL\Type\InputTypeInterface;
 use Youshido\GraphQL\Type\ListType\ListType;
 use Youshido\GraphQL\Type\NonNullType;
 use Youshido\GraphQL\Type\Object\AbstractObjectType;
 use Youshido\GraphQL\Type\TypeInterface;
-use Youshido\GraphQL\Type\TypeMap;
 
 abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
 {
@@ -123,5 +122,28 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
 
         $inputType->addFields($inputFields);
         return $inputType;
+    }
+
+    /**
+     * Returns true if this type mapper can map the $className FQCN to a GraphQL type.
+     *
+     * @param string $className
+     * @return bool
+     */
+    public function canMapClassToType(string $className): bool
+    {
+        return isset($this->getMap()[$className]);
+    }
+
+
+    /**
+     * Returns true if this type mapper can map the $className FQCN to a GraphQL input type.
+     *
+     * @param string $className
+     * @return bool
+     */
+    public function canMapClassToInputType(string $className): bool
+    {
+        return isset($this->getMap()[$className]);
     }
 }
