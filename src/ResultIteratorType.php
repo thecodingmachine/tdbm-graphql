@@ -27,7 +27,7 @@ class ResultIteratorType extends ObjectType
                 'count' => [
                     'type' => Type::int(),
                     'description' => 'Returns the total number of items in the collection.',
-                    'resolve' => function(ResultIterator $source) {
+                    'resolve' => function (ResultIterator $source) {
                         return $source->count();
                     }
                 ],
