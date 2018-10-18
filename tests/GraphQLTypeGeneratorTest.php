@@ -5,8 +5,12 @@ namespace TheCodingMachine\Tdbm\GraphQL;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use GraphQL\GraphQL;
+use GraphQL\Type\Definition\ObjectType;
+use GraphQL\Type\Definition\Type;
+use GraphQL\Type\SchemaConfig;
+use TheCodingMachine\GraphQL\Controllers\TypeGenerator;
 use TheCodingMachine\TDBM\Configuration;
-use TheCodingMachine\Tdbm\GraphQL\Fixtures\TestSchema;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
@@ -16,13 +20,14 @@ use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\CountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\TdbmGraphQLTypeMapper;
+use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use TheCodingMachine\TDBM\TDBMService;
 use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy as TdbmDefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
 use Youshido\GraphQL\Execution\Context\ExecutionContext;
 use Youshido\GraphQL\Execution\Processor;
 use Youshido\GraphQL\Execution\ResolveInfo;
-use Youshido\GraphQL\Schema\Schema;
+use GraphQL\Type\Schema;
 use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
@@ -104,8 +109,28 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $tdbmService = self::getTDBMService();
         $userDao = new UserDao($tdbmService);
-        $registry = TestRegistryFactory::build();
-        $processor = new Processor(new TestSchema($registry, $userDao));
+        $container = new EmptyContainer();
+        $typeMapper = new TdbmGraphQLTypeMapper();
+        $registry = TestRegistryFactory::build($container, null, null, null, $typeMapper);
+        $typeMapper->setContainer($registry);
+
+
+        $queryType = new ObjectType([
+            'name' => 'Query',
+            'fields' => [
+                'users' => [
+                    'type'    => Type::listOf($registry->get(UserType::class)),
+                    'resolve' => function () use ($userDao) {
+                        return $userDao->findAll();
+                    }
+                ]
+            ]
+        ]);
+
+
+        $schema = new Schema([
+            'query' => $queryType
+        ]);
 
         $introspectionQuery = <<<EOF
 {
@@ -117,8 +142,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 }
 EOF;
 
-
-        $response = $processor->processPayload($introspectionQuery, [])->getResponseData();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery)->toArray();
         $this->assertTrue(isset($response['data']['__schema']['queryType']['name']));
 
         $introspectionQuery2 = <<<EOF
@@ -137,7 +161,7 @@ EOF;
 }
 EOF;
 
-        $response = $processor->processPayload($introspectionQuery2, [])->getResponseData();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery2)->toArray();
         $this->assertSame('User', $response['data']['__type']['name']);
         $this->assertSame('OBJECT', $response['data']['__type']['kind']);
         $this->assertSame('id', $response['data']['__type']['fields'][0]['name']);
@@ -163,7 +187,7 @@ EOF;
   }
 }
 EOF;
-        $response = $processor->processPayload($introspectionQuery3, [])->getResponseData();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray();
         $this->assertSame('John Smith', $response['data']['users'][0]['name']);
         $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
     }
@@ -191,7 +215,11 @@ EOF;
 
     public function testResultIteratorType()
     {
-        $type = new ResultIteratorType(new CountryType(TestRegistryFactory::build()));
+        $typeMapper = new TdbmGraphQLTypeMapper();
+        $container = new EmptyContainer();
+        $registry = TestRegistryFactory::build($container, null, null, null, $typeMapper);
+
+        $type = new ResultIteratorType($registry->get(CountryType::class));
 
         $tdbmService = self::getTDBMService();
         $countryDao = new CountryDao($tdbmService);
@@ -200,20 +228,22 @@ EOF;
 
         $countField = $type->getField('count');
         $resolveInfo = $this->getMockBuilder(ResolveInfo::class)->disableOriginalConstructor()->getMock();
-        $this->assertEquals(3, $countField->resolve($countries, [], $resolveInfo));
+        $resolveCallback = $countField->resolveFn;
+        $this->assertEquals(3, $resolveCallback($countries, [], $resolveInfo));
 
         $itemsField = $type->getField('items');
-        $result = $itemsField->resolve($countries, [], $resolveInfo);
+        $resolveCallback = $itemsField->resolveFn;
+        $result = $resolveCallback($countries, [], $resolveInfo);
         $this->assertCount(3, $result);
         $this->assertInstanceOf(Country::class, $result[0]);
 
-        $result = $itemsField->resolve($countries, ['order'=>'label'], $resolveInfo);
+        $result = $resolveCallback($countries, ['order'=>'label'], $resolveInfo);
         $this->assertEquals('Jamaica', $result[1]->getLabel());
 
-        $result = $itemsField->resolve($countries, ['offset'=>1, 'limit'=>1], $resolveInfo);
+        $result = $resolveCallback($countries, ['offset'=>1, 'limit'=>1], $resolveInfo);
         $this->assertCount(1, $result);
 
         $this->expectException(GraphQLException::class);
-        $result = $itemsField->resolve($countries, ['offset'=>1], $resolveInfo);
+        $result = $resolveCallback($countries, ['offset'=>1], $resolveInfo);
     }
 }

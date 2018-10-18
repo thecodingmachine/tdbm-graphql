@@ -4,7 +4,9 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\Reader;
+use GraphQL\Type\Definition\InputType;
 use Psr\Container\ContainerInterface;
 use TheCodingMachine\GraphQL\Controllers\HydratorInterface;
 use TheCodingMachine\GraphQL\Controllers\Mappers\StaticTypeMapper;
@@ -27,21 +29,16 @@ class TestRegistryFactory
                                  TypeMapperInterface $typeMapper = null,
                                  HydratorInterface $hydrator = null): Registry
     {
+        $loader = require __DIR__.'/../vendor/autoload.php';
+        AnnotationRegistry::registerLoader([$loader, 'loadClass']);
+
         $container = $container ?: new EmptyContainer();
         $authorizationService = $authorizationService ?: new VoidAuthorizationService();
         $authenticationService = $authenticationService ?: new VoidAuthenticationService();
         $reader = new AnnotationReader();
         $typeMapper = $typeMapper ?: new StaticTypeMapper();
         $hydrator = $hydrator ?: new class implements HydratorInterface {
-
-            /**
-             * Hydrates/returns an object based on a PHP array and a GraphQL type.
-             *
-             * @param array $data
-             * @param TypeInterface $type
-             * @return object
-             */
-            public function hydrate(array $data, TypeInterface $type)
+            public function hydrate(array $data, InputType $type)
             {
                 throw new \RuntimeException('Not implemented');
             }

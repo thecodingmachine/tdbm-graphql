@@ -9,11 +9,10 @@
         }
     ],
     "require": {
-        "youshido/graphql": "^1.4",
         "thecodingmachine/tdbm": "^5.0",
         "symfony/filesystem": "^2.0 || ^3.0",
         "psr/container": "^1.0",
-        "thecodingmachine/graphql-controllers": "^2"
+        "thecodingmachine/graphql-controllers": "^3"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.1",
@@ -31,7 +30,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "2.0.x-dev"
+            "dev-master": "3.0.x-dev"
         }
     },
     "minimum-stability": "dev",

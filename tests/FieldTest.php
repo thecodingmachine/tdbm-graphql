@@ -13,16 +13,7 @@ class FieldTest extends TestCase
 {
     public function testIsHidden()
     {
-        $authorizationService = new class implements AuthorizationServiceInterface {
-            public function isAllowed(string $right): bool
-            {
-                return ($right === 'ok');
-            }
-        };
-
-        $registry = TestRegistryFactory::build(null, $authorizationService);
-
-        $field = new Field('test', new StringType(), $registry);
+        $field = new Field('test');
 
         $this->assertTrue($field->isHidden());
         $field->show();

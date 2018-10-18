@@ -12,6 +12,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
+use function var_export;
 use Youshido\GraphQL\Type\Scalar\BooleanType;
 use Youshido\GraphQL\Type\Scalar\DateTimeType;
 use Youshido\GraphQL\Type\Scalar\FloatType;
@@ -115,58 +116,25 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         }, $methodDescriptors));
         $fieldFetcherCode = implode("\n", $fieldFetcherCodes);
 
+        $beanFullClassName = '\\'.$beanDescriptor->getBeanNamespace().'\\'.$beanDescriptor->getBeanClassName();
 
         $str = <<<EOF
 <?php
 namespace {$this->generatedNamespace};
 
-//use Youshido\GraphQL\Relay\Connection\Connection;
-//use Youshido\GraphQL\Relay\Connection\ArrayConnection;
 use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
+use TheCodingMachine\GraphQL\Controllers\Annotations\Type;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 use Youshido\GraphQL\Type\ListType\ListType;
 use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
 use Youshido\GraphQL\Type\NonNullType;
 
+/**
+ * @Type(class=$beanFullClassName::class)
+ */
 abstract class $generatedTypeClassName extends $baseClassName
 {
-
-EOF;
-        if (!$isExtended) {
-            $str .= <<<EOF
-
-    public function __construct(RegistryInterface \$registry)
-    {
-        parent::__construct(\$registry);
-    }
-
-    /**
-     * Alters the list of properties for this type.
-     */
-    abstract public function alter(): void;
-
-
-EOF;
-        }
-        $str .= <<<EOF
-    public function getName()
-    {
-        return $typeName;
-    }
-    
-    /**
-     * @param ObjectTypeConfig \$config
-     */
-    public function build(\$config)
-    {
-        parent::build(\$config);
-        \$this->alter();
-        \$config->addFields(array_filter(\$this->getFieldList(), function (\$field) {
-            return !\$field->isHidden();
-        }));
-    }
-    
     /**
      * @return Field[]
      */
@@ -264,14 +232,15 @@ EOF;
         $variableName = $descriptor->getVariableName().'Field';
         $thisVariableName = '$this->'.substr($descriptor->getVariableName().'Field', 1);
 
-        $type = $this->getType($descriptor);
 
-        if ($type === null) {
+        if (!$this->canBeTyped($descriptor)) {
             return <<<EOF
     // Field $getterName is ignored. Cannot represent a JSON  or BLOB field in GraphQL.
 
 EOF;
         }
+
+        $isId = var_export($descriptor->isPrimaryKey(), true);
 
         $code = <<<EOF
     private $variableName;
@@ -279,7 +248,7 @@ EOF;
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);
+            $thisVariableName = new Field($fieldNameAsCode, $isId);
         }
         return $thisVariableName;
     }
@@ -289,46 +258,16 @@ EOF;
         return $code;
     }
 
-    private function getType(AbstractBeanPropertyDescriptor $descriptor) : ?string
+    private function canBeTyped(AbstractBeanPropertyDescriptor $descriptor) : bool
     {
-        // FIXME: can there be several primary key? If yes, we might need to fix this.
-        // Also, primary key should be named "ID"
-        if ($descriptor->isPrimaryKey()) {
-            return 'new \\'.IdType::class.'()';
-        }
-
-        $phpType = $descriptor->getPhpType();
         if ($descriptor instanceof ScalarBeanPropertyDescriptor) {
+            $phpType = $descriptor->getPhpType();
             if ($phpType === 'array' || $phpType === 'resource') {
                 // JSON and BLOB type cannot be casted since GraphQL does not allow for untyped arrays or BLOB.
-                return null;
+                return false;
             }
-
-            $map = [
-                'string' => '\\'.StringType::class,
-                'bool' => '\\'.BooleanType::class,
-                '\DateTimeImmutable' => '\\'.DateTimeType::class,
-                'float' => '\\'.FloatType::class,
-                'int' => '\\'.IntType::class,
-            ];
-
-            if (!isset($map[$phpType])) {
-                throw new GraphQLGeneratorNamespaceException("Cannot map PHP type '$phpType' to any known GraphQL type in table '{$descriptor->getTable()->getName()}' for column '{$descriptor->getColumnName()}'.");
-            }
-
-            $newCode = 'new '.$map[$phpType].'()';
-        } elseif ($descriptor instanceof ObjectBeanPropertyDescriptor) {
-            $beanclassName = $descriptor->getClassName();
-            $newCode = '$this->registry->get(\''.$this->namespace.'\\'.$this->namingStrategy->getClassName($beanclassName).'\')';
-        } else {
-            throw new GraphQLGeneratorNamespaceException('Unexpected property descriptor. Cannot handle class '.get_class($descriptor));
         }
-
-        if ($descriptor->isCompulsory()) {
-            $newCode = "new NonNullType($newCode)";
-        }
-
-        return $newCode;
+        return true;
     }
 
     private function generateRelationshipsCode(MethodDescriptorInterface $descriptor): string
@@ -339,34 +278,17 @@ EOF;
         $variableName = '$'.$fieldName.'Field';
         $thisVariableName = '$this->'.$fieldName.'Field';
 
-        $type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\''.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
+        //$type = 'new NonNullType(new ListType(new NonNullType($this->registry->get(\''.$this->namespace.'\\'.$this->namingStrategy->getClassName($descriptor->getBeanClassName()).'\'))))';
 
         // FIXME: suboptimal code! We need to be able to call ->take for pagination!!!
-        /*$code = <<<EOF
-    private $variableName;
 
-    protected function {$getterName}Field() : Field
-    {
-        if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, Connection::connectionDefinition($type), [
-                'args' => Connection::connectionArgs(),
-                'resolve' => function (\$value = null, \$args = [], \$type = null) {
-                    return ArrayConnection::connectionFromArray(\$value->$getterName(), \$args);
-                }
-            ]);
-        }
-        return $thisVariableName;
-    }
-
-
-EOF;*/
         $code = <<<EOF
     private $variableName;
         
     protected function {$getterName}Field() : Field
     {
         if ($thisVariableName === null) {
-            $thisVariableName = new Field($fieldNameAsCode, $type, \$this->registry);
+            $thisVariableName = new Field($fieldNameAsCode);
         }
         return $thisVariableName;
     }

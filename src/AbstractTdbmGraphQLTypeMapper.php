@@ -3,7 +3,11 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use GraphQL\Type\Definition\InputType;
+use GraphQL\Type\Definition\OutputType;
 use Psr\Container\ContainerInterface;
+use Symfony\Component\Console\Output\Output;
+use TheCodingMachine\GraphQL\Controllers\Mappers\CannotMapTypeException;
 use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
 use Youshido\GraphQL\Type\InputObject\InputObjectType;
 use Youshido\GraphQL\Type\InputTypeInterface;
@@ -46,13 +50,13 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
      *
      * @param string $className
      * @return TypeInterface
-     * @throws GraphQLException
+     * @throws CannotMapTypeException
      */
-    public function mapClassToType(string $className): TypeInterface
+    public function mapClassToType(string $className): OutputType
     {
         $map = $this->getMap();
         if (!isset($map[$className])) {
-            throw new GraphQLException("Unable to map class $className to any known GraphQL type.");
+            throw CannotMapTypeException::createForInputType($className);
         }
         return $this->container->get($map[$className]);
     }
@@ -61,22 +65,22 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
      * Maps a PHP fully qualified class name to a GraphQL input type.
      *
      * @param string $className
-     * @return InputTypeInterface
+     * @return InputType
      * @throws GraphQLException
      */
-    public function mapClassToInputType(string $className): InputTypeInterface
+    public function mapClassToInputType(string $className): InputType
     {
         // Let's create the input type "on the fly"!
         $type = $this->mapClassToType($className);
         if (!$type instanceof AbstractObjectType) {
-            throw new GraphQLException('Cannot map a type to input type if it does not extend the AbstractObjectType class. Type passed: '.get_class($type));
+            throw CannotMapTypeException::createForInputType(get_class($type));
         }
 
         return $this->mapTypeToInputType($type);
     }
 
 
-    private function mapTypeToInputType(TypeInterface $type): InputTypeInterface
+    private function mapTypeToInputType(TypeInterface $type): InputType
     {
         if ($type instanceof ListType) {
             return new ListType($this->mapTypeToInputType($type->getItemType()));

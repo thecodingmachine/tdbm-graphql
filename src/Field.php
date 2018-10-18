@@ -3,64 +3,31 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
+use GraphQL\Type\Definition\OutputType;
+use TheCodingMachine\GraphQL\Controllers\Annotations\Right;
+use TheCodingMachine\GraphQL\Controllers\Annotations\SourceFieldInterface;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
-use Youshido\GraphQL\Execution\ResolveInfo;
-use Youshido\GraphQL\Field\AbstractField;
-use Youshido\GraphQL\Type\AbstractType;
-use Youshido\GraphQL\Type\Object\AbstractObjectType;
-use Youshido\GraphQL\Type\TypeInterface;
 
-class Field extends AbstractField
+class Field implements SourceFieldInterface
 {
     private $hide = true;
     private $right;
-
     /**
-     * @var RegistryInterface
+     * @var string
      */
-    private $registry;
+    private $name;
+    /**
+     * @var bool
+     */
+    private $id;
 
-    public function __construct(string $name, TypeInterface $type, RegistryInterface $registry, array $additionalConfig = [])
+
+    public function __construct(string $name, bool $isId = false)
     {
-        $this->registry = $registry;
-
-        $config = [
-            'name' => $name,
-            'type' => $type
-        ];
-
-        if (!isset($additionalConfig['resolve'])) {
-            $config['resolve'] = function ($source, array $args, ResolveInfo $info) {
-                $getter = 'get'.$info->getField()->getName();
-                return $source->$getter();
-            };
-        }
-
-        $config += $additionalConfig;
-        parent::__construct($config);
+        $this->name = $name;
+        $this->id = $isId;
     }
     
-    /**
-     * @return AbstractObjectType|AbstractType
-     */
-    public function getType()
-    {
-        return $this->config->getType();
-    }
-
-    /**
-     * @return bool
-     */
-    public function isHidden(): bool
-    {
-        $hide = $this->hide;
-        if ($this->right !== null) {
-            $hide |= !$this->registry->getAuthorizationService()->isAllowed($this->right);
-        }
-        return $hide;
-    }
-
     /**
      * Hides this field.
      */
@@ -77,11 +44,70 @@ class Field extends AbstractField
         $this->hide = false;
     }
 
+    /**
+     * @return bool
+     */
+    public function isHidden(): bool
+    {
+        return $this->hide;
+    }
+
     public function requiresRight(string $right)
     {
-        if ($this->registry->getAuthorizationService() === null) {
-            throw new GraphQLException('You did not configure an authorization service in the TDBM-GraphQL registry.');
-        }
         $this->right = $right;
+    }
+
+    /**
+     * Returns the GraphQL right to be applied to this source field.
+     *
+     * @return Right|null
+     */
+    public function getRight(): ?Right
+    {
+        if ($this->right !== null) {
+            return new Right(['name' => $this->right]);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the name of the GraphQL query/mutation/field.
+     * If not specified, the name of the method should be used instead.
+     *
+     * @return null|string
+     */
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isLogged(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Returns the GraphQL return type of the request (as a string).
+     * The string can represent the FQCN of the type or an entry in the container resolving to the GraphQL type.
+     *
+     * @return string|null
+     */
+    public function getReturnType(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * If the GraphQL type is "ID", isID will return true.
+     *
+     * @return bool
+     */
+    public function isId(): bool
+    {
+        return $this->id;
     }
 }

@@ -4,23 +4,11 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use TheCodingMachine\GraphQL\Controllers\AbstractAnnotatedObjectType;
-use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
+use TheCodingMachine\GraphQL\Controllers\Annotations\SourceFieldInterface;
+use TheCodingMachine\GraphQL\Controllers\FromSourceFieldsInterface;
 
-abstract class TdbmObjectType extends AbstractAnnotatedObjectType
+abstract class TdbmObjectType implements FromSourceFieldsInterface
 {
-    /**
-     * Registry is exposed via protected field.
-     *
-     * @var RegistryInterface
-     */
-    protected $registry;
-
-    public function __construct(RegistryInterface $registry)
-    {
-        $this->registry = $registry;
-        parent::__construct($registry);
-    }
-
     /**
      * Returns the list of fields coming from TDBM beans.
      *
@@ -29,6 +17,21 @@ abstract class TdbmObjectType extends AbstractAnnotatedObjectType
     protected function getFieldList(): array
     {
         return [];
+    }
+
+    abstract public function alter(): void;
+
+    /**
+     * Dynamically returns the array of source fields to be fetched from the original object.
+     *
+     * @return SourceFieldInterface[]
+     */
+    public function getSourceFields(): array
+    {
+        $this->alter();
+        return array_filter($this->getFieldList(), function ($field) {
+            return !$field->isHidden();
+        });
     }
 
     protected function showAll(): void
