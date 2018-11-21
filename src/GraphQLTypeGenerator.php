@@ -13,12 +13,6 @@ use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
 use function var_export;
-use Youshido\GraphQL\Type\Scalar\BooleanType;
-use Youshido\GraphQL\Type\Scalar\DateTimeType;
-use Youshido\GraphQL\Type\Scalar\FloatType;
-use Youshido\GraphQL\Type\Scalar\IdType;
-use Youshido\GraphQL\Type\Scalar\IntType;
-use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGenerator implements GeneratorListenerInterface
 {
@@ -126,9 +120,6 @@ use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
 use TheCodingMachine\GraphQL\Controllers\Annotations\Type;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
-use Youshido\GraphQL\Type\ListType\ListType;
-use Youshido\GraphQL\Config\Object\ObjectTypeConfig;
-use Youshido\GraphQL\Type\NonNullType;
 
 /**
  * @Type(class=$beanFullClassName::class)
