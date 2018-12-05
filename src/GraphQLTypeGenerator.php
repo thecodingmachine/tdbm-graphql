@@ -58,7 +58,6 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
     public function onGenerate(ConfigurationInterface $configuration, array $beanDescriptors): void
     {
         $this->generateTypes($beanDescriptors);
-        $this->generateTypeMapper($beanDescriptors);
     }
 
     /**
@@ -288,50 +287,5 @@ EOF;
 EOF;
 
         return $code;
-    }
-
-    /**
-     * @param BeanDescriptorInterface[] $beanDescriptors
-     */
-    private function generateTypeMapper(array $beanDescriptors)
-    {
-        $mapCode = '';
-
-        foreach ($beanDescriptors as $beanDescriptor) {
-            $fqcn = $beanDescriptor->getBeanNamespace().'\\'.$beanDescriptor->getBeanClassName();
-            $graphqlType = $this->namespace.'\\'.$this->namingStrategy->getClassName($beanDescriptor->getBeanClassName());
-
-            $beanToGraphQLMap[$fqcn] = $graphqlType;
-            $mapCode .= '            '.var_export($fqcn, true).' => '.var_export($graphqlType, true).",\n";
-        }
-
-
-        $str = <<<EOF
-<?php
-namespace {$this->namespace};
-
-use TheCodingMachine\Tdbm\GraphQL\AbstractTdbmGraphQLTypeMapper;
-
-class TdbmGraphQLTypeMapper extends AbstractTdbmGraphQLTypeMapper
-{
-    protected function getMap(): array
-    {
-        return [
-$mapCode
-        ];
-    }
-}
-
-EOF;
-
-        $classMapperFqcn = $this->namespace.'\\TdbmGraphQLTypeMapper';
-
-        $fileSystem = new Filesystem();
-        $filePaths = $this->classNameMapper->getPossibleFileNames($classMapperFqcn);
-        if (empty($filePaths)) {
-            throw new GraphQLGeneratorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
-        }
-        $filePath = $filePaths[0];
-        $fileSystem->dumpFile($filePath, $str);
     }
 }

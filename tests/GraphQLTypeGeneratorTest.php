@@ -172,16 +172,12 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/UserType.php');
         $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/Generated/AbstractUserType.php');
-        $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/TdbmGraphQLTypeMapper.php');
 
         $this->assertTrue(class_exists(AbstractCountryType::class));
         $abstractCountryType = new \ReflectionClass(AbstractCountryType::class);
         $this->assertNotNull($abstractCountryType->getMethod('getUsersField'));
         $abstractUserType = new \ReflectionClass(AbstractUserType::class);
         $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
-
-        $tdbmGraphQLTypeMapper = new \ReflectionClass(TdbmGraphQLTypeMapper::class);
-        $this->assertNotNull($tdbmGraphQLTypeMapper->getMethod('mapClassToType'));
     }
 
     /**
