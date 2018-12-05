@@ -59,7 +59,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     public function setUp()
     {
         $this->mainContainer = new Picotainer([
-            ControllerQueryProviderFactory::class => function(ContainerInterface $container) {
+            ControllerQueryProviderFactory::class => function (ContainerInterface $container) {
                 return new ControllerQueryProviderFactory(
                     $container->get(AnnotationReader::class),
                     $container->get(HydratorInterface::class),
@@ -68,38 +68,38 @@ class GraphQLTypeGeneratorTest extends TestCase
                     $container->get(BasicAutoWiringContainer::class)
                 );
             },
-            BasicAutoWiringContainer::class => function(ContainerInterface $container) {
+            BasicAutoWiringContainer::class => function (ContainerInterface $container) {
                 return new BasicAutoWiringContainer(new EmptyContainer());
             },
-            AuthorizationServiceInterface::class => function(ContainerInterface $container) {
+            AuthorizationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthorizationService();
             },
-            AuthenticationServiceInterface::class => function(ContainerInterface $container) {
+            AuthenticationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthenticationService();
             },
-            RecursiveTypeMapperInterface::class => function(ContainerInterface $container) {
+            RecursiveTypeMapperInterface::class => function (ContainerInterface $container) {
                 return new RecursiveTypeMapper($container->get(TypeMapperInterface::class));
             },
-            TypeMapperInterface::class => function(ContainerInterface $container) {
-                return new GlobTypeMapper('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
+            TypeMapperInterface::class => function (ContainerInterface $container) {
+                return new GlobTypeMapper(
+                    'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
                     $container->get(TypeGenerator::class),
                     $container->get(BasicAutoWiringContainer::class),
                     $container->get(AnnotationReader::class),
                     new NullCache()
                 );
             },
-            TypeGenerator::class => function(ContainerInterface $container) {
+            TypeGenerator::class => function (ContainerInterface $container) {
                 return new TypeGenerator(
                     $container->get(AnnotationReader::class),
                     $container->get(ControllerQueryProviderFactory::class)
                 );
             },
-            AnnotationReader::class => function(ContainerInterface $container) {
+            AnnotationReader::class => function (ContainerInterface $container) {
                 return new AnnotationReader(new DoctrineAnnotationReader());
             },
-            HydratorInterface::class => function(ContainerInterface $container) {
-                return new class implements HydratorInterface
-                {
+            HydratorInterface::class => function (ContainerInterface $container) {
+                return new class implements HydratorInterface {
                     public function hydrate(array $data, InputType $type)
                     {
                         throw new \RuntimeException('Not implemented');
