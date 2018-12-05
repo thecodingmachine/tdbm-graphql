@@ -3,11 +3,14 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use function array_keys;
 use GraphQL\Type\Definition\InputType;
+use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\OutputType;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Console\Output\Output;
 use TheCodingMachine\GraphQL\Controllers\Mappers\CannotMapTypeException;
+use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapperInterface;
 use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
 use Youshido\GraphQL\Type\InputObject\InputObjectType;
 use Youshido\GraphQL\Type\InputTypeInterface;
@@ -52,13 +55,23 @@ abstract class AbstractTdbmGraphQLTypeMapper implements TypeMapperInterface
      * @return TypeInterface
      * @throws CannotMapTypeException
      */
-    public function mapClassToType(string $className): OutputType
+    public function mapClassToType(string $className, RecursiveTypeMapperInterface $recursiveTypeMapper): ObjectType
     {
         $map = $this->getMap();
         if (!isset($map[$className])) {
             throw CannotMapTypeException::createForInputType($className);
         }
         return $this->container->get($map[$className]);
+    }
+
+    /**
+     * Returns the list of classes that have matching input GraphQL types.
+     *
+     * @return string[]
+     */
+    public function getSupportedClasses(): array
+    {
+        return array_keys($this->getMap());
     }
 
     /**

@@ -2,18 +2,37 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use GraphQL\GraphQL;
+use GraphQL\Type\Definition\InputType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 use GraphQL\Type\SchemaConfig;
+use Mouf\Picotainer\Picotainer;
+use Psr\Container\ContainerInterface;
+use Symfony\Component\Cache\Simple\NullCache;
+use TheCodingMachine\GraphQL\Controllers\AnnotationReader;
+use Doctrine\Common\Annotations\AnnotationReader as DoctrineAnnotationReader;
+use TheCodingMachine\GraphQL\Controllers\Containers\BasicAutoWiringContainer;
+use TheCodingMachine\GraphQL\Controllers\ControllerQueryProviderFactory;
+use TheCodingMachine\GraphQL\Controllers\HydratorInterface;
+use TheCodingMachine\GraphQL\Controllers\Mappers\GlobTypeMapper;
+use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapper;
+use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapperInterface;
+use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\AuthenticationServiceInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
+use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthenticationService;
+use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthorizationService;
 use TheCodingMachine\GraphQL\Controllers\TypeGenerator;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\CountryDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\CountryType;
@@ -32,6 +51,66 @@ use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
 {
+    /**
+     * @var ContainerInterface
+     */
+    private $mainContainer;
+
+    public function setUp()
+    {
+        $this->mainContainer = new Picotainer([
+            ControllerQueryProviderFactory::class => function(ContainerInterface $container) {
+                return new ControllerQueryProviderFactory(
+                    $container->get(AnnotationReader::class),
+                    $container->get(HydratorInterface::class),
+                    $container->get(AuthenticationServiceInterface::class),
+                    $container->get(AuthorizationServiceInterface::class),
+                    $container->get(BasicAutoWiringContainer::class)
+                );
+            },
+            BasicAutoWiringContainer::class => function(ContainerInterface $container) {
+                return new BasicAutoWiringContainer(new EmptyContainer());
+            },
+            AuthorizationServiceInterface::class => function(ContainerInterface $container) {
+                return new VoidAuthorizationService();
+            },
+            AuthenticationServiceInterface::class => function(ContainerInterface $container) {
+                return new VoidAuthenticationService();
+            },
+            RecursiveTypeMapperInterface::class => function(ContainerInterface $container) {
+                return new RecursiveTypeMapper($container->get(TypeMapperInterface::class));
+            },
+            TypeMapperInterface::class => function(ContainerInterface $container) {
+                return new GlobTypeMapper('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
+                    $container->get(TypeGenerator::class),
+                    $container->get(BasicAutoWiringContainer::class),
+                    $container->get(AnnotationReader::class),
+                    new NullCache()
+                );
+            },
+            TypeGenerator::class => function(ContainerInterface $container) {
+                return new TypeGenerator(
+                    $container->get(AnnotationReader::class),
+                    $container->get(ControllerQueryProviderFactory::class)
+                );
+            },
+            AnnotationReader::class => function(ContainerInterface $container) {
+                return new AnnotationReader(new DoctrineAnnotationReader());
+            },
+            HydratorInterface::class => function(ContainerInterface $container) {
+                return new class implements HydratorInterface
+                {
+                    public function hydrate(array $data, InputType $type)
+                    {
+                        throw new \RuntimeException('Not implemented');
+                        //return new Contact($data['name']);
+                    }
+                };
+            }
+        ]);
+    }
+
+
     private static function getAdminConnectionParams(): array
     {
         return array(
@@ -52,6 +131,9 @@ class GraphQLTypeGeneratorTest extends TestCase
 
     public static function setUpBeforeClass()
     {
+        $loader = require __DIR__.'/../vendor/autoload.php';
+        AnnotationRegistry::registerLoader([$loader, 'loadClass']);
+
         $config = new \Doctrine\DBAL\Configuration();
 
         $adminConn = DriverManager::getConnection(self::getAdminConnectionParams(), $config);
@@ -109,17 +191,17 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $tdbmService = self::getTDBMService();
         $userDao = new UserDao($tdbmService);
-        $container = new EmptyContainer();
-        $typeMapper = new TdbmGraphQLTypeMapper();
+        //$container = new EmptyContainer();
+        /*$typeMapper = new TdbmGraphQLTypeMapper();
         $registry = TestRegistryFactory::build($container, null, null, null, $typeMapper);
-        $typeMapper->setContainer($registry);
+        $typeMapper->setContainer($registry);*/
 
 
         $queryType = new ObjectType([
             'name' => 'Query',
             'fields' => [
                 'users' => [
-                    'type'    => Type::listOf($registry->get(UserType::class)),
+                    'type'    => Type::listOf($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(User::class)),
                     'resolve' => function () use ($userDao) {
                         return $userDao->findAll();
                     }
@@ -215,11 +297,7 @@ EOF;
 
     public function testResultIteratorType()
     {
-        $typeMapper = new TdbmGraphQLTypeMapper();
-        $container = new EmptyContainer();
-        $registry = TestRegistryFactory::build($container, null, null, null, $typeMapper);
-
-        $type = new ResultIteratorType($registry->get(CountryType::class));
+        $type = new ResultIteratorType($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(Country::class));
 
         $tdbmService = self::getTDBMService();
         $countryDao = new CountryDao($tdbmService);
