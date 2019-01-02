@@ -17,20 +17,25 @@ use Symfony\Component\Cache\Simple\NullCache;
 use TheCodingMachine\GraphQL\Controllers\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationReader as DoctrineAnnotationReader;
 use TheCodingMachine\GraphQL\Controllers\Containers\BasicAutoWiringContainer;
-use TheCodingMachine\GraphQL\Controllers\ControllerQueryProviderFactory;
-use TheCodingMachine\GraphQL\Controllers\HydratorInterface;
+use TheCodingMachine\GraphQL\Controllers\FieldsBuilderFactory;
+use TheCodingMachine\GraphQL\Controllers\Hydrators\FactoryHydrator;
+use TheCodingMachine\GraphQL\Controllers\Hydrators\HydratorInterface;
+use TheCodingMachine\GraphQL\Controllers\InputTypeGenerator;
+use TheCodingMachine\GraphQL\Controllers\InputTypeUtils;
 use TheCodingMachine\GraphQL\Controllers\Mappers\GlobTypeMapper;
 use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapper;
 use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapperInterface;
 use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
+use TheCodingMachine\GraphQL\Controllers\NamingStrategy;
+use TheCodingMachine\GraphQL\Controllers\Reflection\CachedDocBlockFactory;
 use TheCodingMachine\GraphQL\Controllers\Security\AuthenticationServiceInterface;
 use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
 use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthenticationService;
 use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthorizationService;
 use TheCodingMachine\GraphQL\Controllers\TypeGenerator;
+use TheCodingMachine\GraphQL\Controllers\Types\TypeResolver;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
-use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\CountryDao;
@@ -59,13 +64,14 @@ class GraphQLTypeGeneratorTest extends TestCase
     public function setUp()
     {
         $this->mainContainer = new Picotainer([
-            ControllerQueryProviderFactory::class => function (ContainerInterface $container) {
-                return new ControllerQueryProviderFactory(
+            FieldsBuilderFactory::class => function(ContainerInterface $container) {
+                return new FieldsBuilderFactory(
                     $container->get(AnnotationReader::class),
                     $container->get(HydratorInterface::class),
                     $container->get(AuthenticationServiceInterface::class),
                     $container->get(AuthorizationServiceInterface::class),
-                    $container->get(BasicAutoWiringContainer::class)
+                    $container->get(TypeResolver::class),
+                    $container->get(CachedDocBlockFactory::class)
                 );
             },
             BasicAutoWiringContainer::class => function (ContainerInterface $container) {
@@ -77,36 +83,55 @@ class GraphQLTypeGeneratorTest extends TestCase
             AuthenticationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthenticationService();
             },
-            RecursiveTypeMapperInterface::class => function (ContainerInterface $container) {
-                return new RecursiveTypeMapper($container->get(TypeMapperInterface::class));
+            RecursiveTypeMapperInterface::class => function(ContainerInterface $container) {
+                return new RecursiveTypeMapper($container->get(TypeMapperInterface::class), $container->get(NamingStrategyInterface::class), new \Symfony\Component\Cache\Simple\ArrayCache());
             },
             TypeMapperInterface::class => function (ContainerInterface $container) {
-                return new GlobTypeMapper(
-                    'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
+                return new GlobTypeMapper('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
                     $container->get(TypeGenerator::class),
+                    $container->get(InputTypeGenerator::class),
+                    $container->get(InputTypeUtils::class),
                     $container->get(BasicAutoWiringContainer::class),
                     $container->get(AnnotationReader::class),
-                    new NullCache()
+                    $container->get(NamingStrategyInterface::class),
+                    new \Symfony\Component\Cache\Simple\ArrayCache()
                 );
             },
-            TypeGenerator::class => function (ContainerInterface $container) {
+            TypeGenerator::class => function(ContainerInterface $container) {
                 return new TypeGenerator(
                     $container->get(AnnotationReader::class),
-                    $container->get(ControllerQueryProviderFactory::class)
+                    $container->get(FieldsBuilderFactory::class),
+                    $container->get(NamingStrategyInterface::class)
                 );
             },
             AnnotationReader::class => function (ContainerInterface $container) {
                 return new AnnotationReader(new DoctrineAnnotationReader());
             },
-            HydratorInterface::class => function (ContainerInterface $container) {
-                return new class implements HydratorInterface {
-                    public function hydrate(array $data, InputType $type)
-                    {
-                        throw new \RuntimeException('Not implemented');
-                        //return new Contact($data['name']);
-                    }
-                };
-            }
+            HydratorInterface::class => function(ContainerInterface $container) {
+                return new FactoryHydrator();
+            },
+            InputTypeGenerator::class => function(ContainerInterface $container) {
+                return new InputTypeGenerator(
+                    $container->get(InputTypeUtils::class),
+                    $container->get(FieldsBuilderFactory::class),
+                    $container->get(HydratorInterface::class)
+                );
+            },
+            InputTypeUtils::class => function(ContainerInterface $container) {
+                return new InputTypeUtils(
+                    $container->get(AnnotationReader::class),
+                    $container->get(NamingStrategyInterface::class)
+                );
+            },
+            TypeResolver::class => function(ContainerInterface $container) {
+                return new TypeResolver();
+            },
+            CachedDocBlockFactory::class => function() {
+                return new CachedDocBlockFactory(new \Symfony\Component\Cache\Simple\ArrayCache());
+            },
+            NamingStrategyInterface::class => function() {
+                return new NamingStrategy();
+            },
         ]);
     }
 

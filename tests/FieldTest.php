@@ -23,4 +23,13 @@ class FieldTest extends TestCase
 
         $field->requiresRight('nope');
     }
+
+    public function testFailWith()
+    {
+        $field = new Field('test');
+        $this->assertFalse($field->canFailWith());
+        $field->failWith('foo');
+        $this->assertTrue($field->canFailWith());
+        $this->assertSame('foo', $field->getFailWith());
+    }
 }
