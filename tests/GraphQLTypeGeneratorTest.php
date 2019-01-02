@@ -64,7 +64,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     public function setUp()
     {
         $this->mainContainer = new Picotainer([
-            FieldsBuilderFactory::class => function(ContainerInterface $container) {
+            FieldsBuilderFactory::class => function (ContainerInterface $container) {
                 return new FieldsBuilderFactory(
                     $container->get(AnnotationReader::class),
                     $container->get(HydratorInterface::class),
@@ -83,11 +83,12 @@ class GraphQLTypeGeneratorTest extends TestCase
             AuthenticationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthenticationService();
             },
-            RecursiveTypeMapperInterface::class => function(ContainerInterface $container) {
+            RecursiveTypeMapperInterface::class => function (ContainerInterface $container) {
                 return new RecursiveTypeMapper($container->get(TypeMapperInterface::class), $container->get(NamingStrategyInterface::class), new \Symfony\Component\Cache\Simple\ArrayCache());
             },
             TypeMapperInterface::class => function (ContainerInterface $container) {
-                return new GlobTypeMapper('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
+                return new GlobTypeMapper(
+                    'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
                     $container->get(TypeGenerator::class),
                     $container->get(InputTypeGenerator::class),
                     $container->get(InputTypeUtils::class),
@@ -97,7 +98,7 @@ class GraphQLTypeGeneratorTest extends TestCase
                     new \Symfony\Component\Cache\Simple\ArrayCache()
                 );
             },
-            TypeGenerator::class => function(ContainerInterface $container) {
+            TypeGenerator::class => function (ContainerInterface $container) {
                 return new TypeGenerator(
                     $container->get(AnnotationReader::class),
                     $container->get(FieldsBuilderFactory::class),
@@ -107,29 +108,29 @@ class GraphQLTypeGeneratorTest extends TestCase
             AnnotationReader::class => function (ContainerInterface $container) {
                 return new AnnotationReader(new DoctrineAnnotationReader());
             },
-            HydratorInterface::class => function(ContainerInterface $container) {
+            HydratorInterface::class => function (ContainerInterface $container) {
                 return new FactoryHydrator();
             },
-            InputTypeGenerator::class => function(ContainerInterface $container) {
+            InputTypeGenerator::class => function (ContainerInterface $container) {
                 return new InputTypeGenerator(
                     $container->get(InputTypeUtils::class),
                     $container->get(FieldsBuilderFactory::class),
                     $container->get(HydratorInterface::class)
                 );
             },
-            InputTypeUtils::class => function(ContainerInterface $container) {
+            InputTypeUtils::class => function (ContainerInterface $container) {
                 return new InputTypeUtils(
                     $container->get(AnnotationReader::class),
                     $container->get(NamingStrategyInterface::class)
                 );
             },
-            TypeResolver::class => function(ContainerInterface $container) {
+            TypeResolver::class => function (ContainerInterface $container) {
                 return new TypeResolver();
             },
-            CachedDocBlockFactory::class => function() {
+            CachedDocBlockFactory::class => function () {
                 return new CachedDocBlockFactory(new \Symfony\Component\Cache\Simple\ArrayCache());
             },
-            NamingStrategyInterface::class => function() {
+            NamingStrategyInterface::class => function () {
                 return new NamingStrategy();
             },
         ]);
