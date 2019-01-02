@@ -20,6 +20,14 @@ class Field implements SourceFieldInterface
      * @var bool
      */
     private $id;
+    /**
+     * @var mixed
+     */
+    private $failWithValue;
+    /**
+     * @var bool
+     */
+    private $hasFailWith = false;
 
 
     public function __construct(string $name, bool $isId = false)
@@ -52,9 +60,17 @@ class Field implements SourceFieldInterface
         return $this->hide;
     }
 
-    public function requiresRight(string $right)
+    public function requiresRight(string $right): self
     {
         $this->right = $right;
+        return $this;
+    }
+
+    public function failWith($defaultValue): self
+    {
+        $this->failWithValue = $defaultValue;
+        $this->hasFailWith = true;
+        return $this;
     }
 
     /**
@@ -92,11 +108,11 @@ class Field implements SourceFieldInterface
 
     /**
      * Returns the GraphQL return type of the request (as a string).
-     * The string can represent the FQCN of the type or an entry in the container resolving to the GraphQL type.
+     * The string is the GraphQL output type name.
      *
      * @return string|null
      */
-    public function getReturnType(): ?string
+    public function getOutputType(): ?string
     {
         return null;
     }
@@ -109,5 +125,25 @@ class Field implements SourceFieldInterface
     public function isId(): bool
     {
         return $this->id;
+    }
+
+    /**
+     * Returns the default value to use if the right is not enforced.
+     *
+     * @return mixed
+     */
+    public function getFailWith()
+    {
+        return $this->failWithValue;
+    }
+
+    /**
+     * True if a default value is available if a right is not enforced.
+     *
+     * @return bool
+     */
+    public function canFailWith()
+    {
+        return $this->hasFailWith;
     }
 }
