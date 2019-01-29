@@ -14,26 +14,27 @@ use GraphQL\Type\SchemaConfig;
 use Mouf\Picotainer\Picotainer;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Cache\Simple\NullCache;
-use TheCodingMachine\GraphQL\Controllers\AnnotationReader;
+use TheCodingMachine\GraphQLite\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationReader as DoctrineAnnotationReader;
-use TheCodingMachine\GraphQL\Controllers\Containers\BasicAutoWiringContainer;
-use TheCodingMachine\GraphQL\Controllers\FieldsBuilderFactory;
-use TheCodingMachine\GraphQL\Controllers\Hydrators\FactoryHydrator;
-use TheCodingMachine\GraphQL\Controllers\Hydrators\HydratorInterface;
-use TheCodingMachine\GraphQL\Controllers\InputTypeGenerator;
-use TheCodingMachine\GraphQL\Controllers\InputTypeUtils;
-use TheCodingMachine\GraphQL\Controllers\Mappers\GlobTypeMapper;
-use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapper;
-use TheCodingMachine\GraphQL\Controllers\Mappers\RecursiveTypeMapperInterface;
-use TheCodingMachine\GraphQL\Controllers\Mappers\TypeMapperInterface;
-use TheCodingMachine\GraphQL\Controllers\NamingStrategy;
-use TheCodingMachine\GraphQL\Controllers\Reflection\CachedDocBlockFactory;
-use TheCodingMachine\GraphQL\Controllers\Security\AuthenticationServiceInterface;
-use TheCodingMachine\GraphQL\Controllers\Security\AuthorizationServiceInterface;
-use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthenticationService;
-use TheCodingMachine\GraphQL\Controllers\Security\VoidAuthorizationService;
-use TheCodingMachine\GraphQL\Controllers\TypeGenerator;
-use TheCodingMachine\GraphQL\Controllers\Types\TypeResolver;
+use TheCodingMachine\GraphQLite\Containers\BasicAutoWiringContainer;
+use TheCodingMachine\GraphQLite\FieldsBuilderFactory;
+use TheCodingMachine\GraphQLite\Hydrators\FactoryHydrator;
+use TheCodingMachine\GraphQLite\Hydrators\HydratorInterface;
+use TheCodingMachine\GraphQLite\InputTypeGenerator;
+use TheCodingMachine\GraphQLite\InputTypeUtils;
+use TheCodingMachine\GraphQLite\Mappers\GlobTypeMapper;
+use TheCodingMachine\GraphQLite\Mappers\RecursiveTypeMapper;
+use TheCodingMachine\GraphQLite\Mappers\RecursiveTypeMapperInterface;
+use TheCodingMachine\GraphQLite\Mappers\TypeMapperInterface;
+use TheCodingMachine\GraphQLite\NamingStrategy;
+use TheCodingMachine\GraphQLite\Reflection\CachedDocBlockFactory;
+use TheCodingMachine\GraphQLite\Security\AuthenticationServiceInterface;
+use TheCodingMachine\GraphQLite\Security\AuthorizationServiceInterface;
+use TheCodingMachine\GraphQLite\Security\VoidAuthenticationService;
+use TheCodingMachine\GraphQLite\Security\VoidAuthorizationService;
+use TheCodingMachine\GraphQLite\TypeGenerator;
+use TheCodingMachine\GraphQLite\TypeRegistry;
+use TheCodingMachine\GraphQLite\Types\TypeResolver;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
@@ -43,16 +44,11 @@ use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\CountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
-use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\TdbmGraphQLTypeMapper;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use TheCodingMachine\TDBM\TDBMService;
 use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy as TdbmDefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
-use Youshido\GraphQL\Execution\Context\ExecutionContext;
-use Youshido\GraphQL\Execution\Processor;
-use Youshido\GraphQL\Execution\ResolveInfo;
 use GraphQL\Type\Schema;
-use Youshido\GraphQL\Type\Scalar\StringType;
 
 class GraphQLTypeGeneratorTest extends TestCase
 {
@@ -71,7 +67,8 @@ class GraphQLTypeGeneratorTest extends TestCase
                     $container->get(AuthenticationServiceInterface::class),
                     $container->get(AuthorizationServiceInterface::class),
                     $container->get(TypeResolver::class),
-                    $container->get(CachedDocBlockFactory::class)
+                    $container->get(CachedDocBlockFactory::class),
+                    $container->get(NamingStrategyInterface::class)
                 );
             },
             BasicAutoWiringContainer::class => function (ContainerInterface $container) {
@@ -84,7 +81,12 @@ class GraphQLTypeGeneratorTest extends TestCase
                 return new VoidAuthenticationService();
             },
             RecursiveTypeMapperInterface::class => function (ContainerInterface $container) {
-                return new RecursiveTypeMapper($container->get(TypeMapperInterface::class), $container->get(NamingStrategyInterface::class), new \Symfony\Component\Cache\Simple\ArrayCache());
+                return new RecursiveTypeMapper(
+                    $container->get(TypeMapperInterface::class),
+                    $container->get(NamingStrategyInterface::class),
+                    new \Symfony\Component\Cache\Simple\ArrayCache(),
+                    $container->get(TypeRegistry::class)
+                );
             },
             TypeMapperInterface::class => function (ContainerInterface $container) {
                 return new GlobTypeMapper(
@@ -102,8 +104,13 @@ class GraphQLTypeGeneratorTest extends TestCase
                 return new TypeGenerator(
                     $container->get(AnnotationReader::class),
                     $container->get(FieldsBuilderFactory::class),
-                    $container->get(NamingStrategyInterface::class)
+                    $container->get(NamingStrategyInterface::class),
+                    $container->get(TypeRegistry::class),
+                    $container->get(BasicAutoWiringContainer::class)
                 );
+            },
+            TypeRegistry::class => function () {
+                return new TypeRegistry();
             },
             AnnotationReader::class => function (ContainerInterface $container) {
                 return new AnnotationReader(new DoctrineAnnotationReader());
@@ -223,7 +230,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             'name' => 'Query',
             'fields' => [
                 'users' => [
-                    'type'    => Type::listOf($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(User::class)),
+                    'type'    => Type::listOf($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(User::class, null)),
                     'resolve' => function () use ($userDao) {
                         return $userDao->findAll();
                     }
@@ -319,7 +326,7 @@ EOF;
 
     public function testResultIteratorType()
     {
-        $type = new ResultIteratorType($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(Country::class));
+        $type = new ResultIteratorType($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(Country::class, null));
 
         $tdbmService = self::getTDBMService();
         $countryDao = new CountryDao($tdbmService);

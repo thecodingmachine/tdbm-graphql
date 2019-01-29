@@ -3,9 +3,9 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-use TheCodingMachine\GraphQL\Controllers\AbstractAnnotatedObjectType;
-use TheCodingMachine\GraphQL\Controllers\Annotations\SourceFieldInterface;
-use TheCodingMachine\GraphQL\Controllers\FromSourceFieldsInterface;
+use TheCodingMachine\GraphQLite\AbstractAnnotatedObjectType;
+use TheCodingMachine\GraphQLite\Annotations\SourceFieldInterface;
+use TheCodingMachine\GraphQLite\FromSourceFieldsInterface;
 
 abstract class TdbmObjectType implements FromSourceFieldsInterface
 {
