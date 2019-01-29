@@ -85,7 +85,8 @@ class GraphQLTypeGeneratorTest extends TestCase
                     $container->get(TypeMapperInterface::class),
                     $container->get(NamingStrategyInterface::class),
                     new \Symfony\Component\Cache\Simple\ArrayCache(),
-                    $container->get(TypeRegistry::class));
+                    $container->get(TypeRegistry::class)
+                );
             },
             TypeMapperInterface::class => function (ContainerInterface $container) {
                 return new GlobTypeMapper(
@@ -108,7 +109,7 @@ class GraphQLTypeGeneratorTest extends TestCase
                     $container->get(BasicAutoWiringContainer::class)
                 );
             },
-            TypeRegistry::class => function() {
+            TypeRegistry::class => function () {
                 return new TypeRegistry();
             },
             AnnotationReader::class => function (ContainerInterface $container) {
