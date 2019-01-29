@@ -115,8 +115,8 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 <?php
 namespace {$this->generatedNamespace};
 
-use TheCodingMachine\GraphQL\Controllers\Registry\RegistryInterface;
-use TheCodingMachine\GraphQL\Controllers\Annotations\Type;
+use TheCodingMachine\GraphQLite\Registry\RegistryInterface;
+use TheCodingMachine\GraphQLite\Annotations\Type;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 

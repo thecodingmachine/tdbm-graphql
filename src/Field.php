@@ -4,8 +4,8 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use GraphQL\Type\Definition\OutputType;
-use TheCodingMachine\GraphQL\Controllers\Annotations\Right;
-use TheCodingMachine\GraphQL\Controllers\Annotations\SourceFieldInterface;
+use TheCodingMachine\GraphQLite\Annotations\Right;
+use TheCodingMachine\GraphQLite\Annotations\SourceFieldInterface;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 
 class Field implements SourceFieldInterface
