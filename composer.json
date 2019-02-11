@@ -1,6 +1,6 @@
 {
     "name": "thecodingmachine/tdbm-graphql",
-    "description": "A class generator that will generate GraphQL types from your database schema (using youshido/graphql).",
+    "description": "A class generator that will generate GraphQL types from your database schema (using thecodingmachine/graphqlite).",
     "license": "MIT",
     "authors": [
         {
@@ -10,7 +10,7 @@
     ],
     "require": {
         "thecodingmachine/tdbm": "^5.0",
-        "symfony/filesystem": "^2.0 || ^3.0",
+        "symfony/filesystem": "^2.0 || ^3.0 || ^4.0",
         "psr/container": "^1.0",
         "thecodingmachine/graphqlite": "^3"
     },
