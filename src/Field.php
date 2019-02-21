@@ -11,6 +11,13 @@ use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 class Field implements SourceFieldInterface
 {
     private $hide = true;
+    /**
+     * @var bool
+     */
+    private $logged = false;
+    /**
+     * @var string
+     */
     private $right;
     /**
      * @var string
@@ -60,6 +67,18 @@ class Field implements SourceFieldInterface
         return $this->hide;
     }
 
+    /**
+     * The user must be logged to access this field.
+     */
+    public function logged(): self
+    {
+        $this->logged = true;
+        return $this;
+    }
+
+    /**
+     * The user must have right $right to access this field.
+     */
     public function requiresRight(string $right): self
     {
         $this->right = $right;
@@ -103,7 +122,7 @@ class Field implements SourceFieldInterface
      */
     public function isLogged(): bool
     {
-        return false;
+        return $this->logged;
     }
 
     /**
