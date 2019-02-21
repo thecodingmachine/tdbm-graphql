@@ -32,4 +32,12 @@ class FieldTest extends TestCase
         $this->assertTrue($field->canFailWith());
         $this->assertSame('foo', $field->getFailWith());
     }
+
+    public function testLogged()
+    {
+        $field = new Field('test');
+        $this->assertFalse($field->isLogged());
+        $field->logged();
+        $this->assertTrue($field->isLogged());
+    }
 }
