@@ -1,37 +1,37 @@
 <?php
+
+
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use function array_filter;
 use Mouf\Composer\ClassNameMapper;
-use TheCodingMachine\TDBM\Configuration;
+use TheCodingMachine\GraphQLite\Annotations\Type;
 use TheCodingMachine\TDBM\ConfigurationInterface;
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
-use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
+use TheCodingMachine\TDBM\Utils\Annotation\AnnotationParser;
+use TheCodingMachine\TDBM\Utils\BaseCodeGeneratorListener;
+use TheCodingMachine\TDBM\Utils\BeanDescriptor;
 use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
-use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
+use TheCodingMachine\TDBM\Utils\PivotTableMethodsDescriptor;
+use Zend\Code\Generator\ClassGenerator;
+use Zend\Code\Generator\DocBlock\Tag\GenericTag;
+use Zend\Code\Generator\FileGenerator;
+use Zend\Code\Generator\MethodGenerator;
+use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
-use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
 use function var_export;
 
-class GraphQLTypeGenerator implements GeneratorListenerInterface
+/**
+ * Annotates TDBM beans by adding "Type" and "Field" annotations.
+ */
+class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
 {
     /**
-     * @var string
+     * @var AnnotationParser
      */
-    private $namespace;
-    /**
-     * @var string
-     */
-    private $generatedNamespace;
-    /**
-     * @var null|NamingStrategyInterface
-     */
-    private $namingStrategy;
-    /**
-     * @var ClassNameMapper
-     */
-    private $classNameMapper;
+    private $annotationParser;
 
     /**
      * @param string $namespace The namespace the type classes will be written in.
@@ -39,7 +39,7 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
      * @param NamingStrategyInterface|null $namingStrategy
      * @param ClassNameMapper|null $classNameMapper
      */
-    public function __construct(string $namespace, ?string $generatedNamespace = null, ?NamingStrategyInterface $namingStrategy = null, ?ClassNameMapper $classNameMapper = null)
+    public function __construct(string $namespace, ?string $generatedNamespace = null, ?NamingStrategyInterface $namingStrategy = null, ?ClassNameMapper $classNameMapper = null, ?AnnotationParser $annotationParser = null)
     {
         $this->namespace = trim($namespace, '\\');
         if ($generatedNamespace !== null) {
@@ -49,33 +49,41 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
         }
         $this->namingStrategy = $namingStrategy ?: new DefaultNamingStrategy();
         $this->classNameMapper = $classNameMapper ?: ClassNameMapper::createFromComposerFile();
+        $this->annotationParser = $annotationParser ?: AnnotationParser::buildWithDefaultAnnotations([]);
     }
 
-    /**
-     * @param ConfigurationInterface $configuration
-     * @param BeanDescriptorInterface[] $beanDescriptors
-     */
-    public function onGenerate(ConfigurationInterface $configuration, array $beanDescriptors): void
+    public function onBaseBeanGenerated(FileGenerator $fileGenerator, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration): ?FileGenerator
     {
-        $this->generateTypes($beanDescriptors);
-    }
+        $annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
+        $fileGenerator->setUse(Field::class, 'GraphqlField');
 
-    /**
-     * @param BeanDescriptorInterface[] $beanDescriptors
-     */
-    private function generateTypes(array $beanDescriptors): void
-    {
-        foreach ($beanDescriptors as $beanDescriptor) {
+        $type = $annotations->findAnnotation(Type::class);
+        if ($type !== null) {
+            $fileGenerator->setUse(Type::class, 'GraphqlType');
+            $fileGenerator->getClass()->getDocBlock()->setTag(new GenericTag('GraphqlType'));
+
             $this->generateAbstractTypeFile($beanDescriptor);
             $this->generateMainTypeFile($beanDescriptor);
         }
+
+        return $fileGenerator;
+    }
+
+    /**
+     * Called when a column is turned into a getter/setter.
+     *
+     * @return array<int, ?MethodGenerator> Returns an array of 2 methods to be generated for this property. You MUST return the getter (first argument) and setter (second argument) as part of these methods (if you want them to appear in the bean). Return null if you want to delete them.
+     */
+    public function onBaseBeanPropertyGenerated(?MethodGenerator $getter, ?MethodGenerator $setter, AbstractBeanPropertyDescriptor $propertyDescriptor, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration, ClassGenerator $classGenerator): array
+    {
+        if ($getter !== null) {
+            $getter->getDocBlock()->setTag(new GenericTag('GraphqlField', '()'));
+        }
+        return [$getter, $setter];
     }
 
     private function generateAbstractTypeFile(BeanDescriptorInterface $beanDescriptor)
     {
-        // FIXME: find a way around inheritance issues => we should have interfaces for inherited tables.
-        // Ideally, the interface should have the same fields as the type (so no issue)
-
         $generatedTypeClassName = $this->namingStrategy->getGeneratedClassName($beanDescriptor->getBeanClassName());
         $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor->getBeanClassName()), true);
 
@@ -98,6 +106,10 @@ class GraphQLTypeGenerator implements GeneratorListenerInterface
 
         // one to many and many to many relationships:
         $methodDescriptors = $beanDescriptor->getMethodDescriptors();
+
+        // Let's remove method descriptors that are not annotated with GraphQL
+        $methodDescriptors = array_filter($methodDescriptors, [$this, 'isMethodDescriptorExposed']);
+
         $relationshipsCodes = array_map([$this, 'generateRelationshipsCode'], $methodDescriptors);
         $relationshipsCode = implode('', $relationshipsCodes);
 
@@ -146,10 +158,30 @@ EOF;
         $fqcn = $this->generatedNamespace.'\\'.$generatedTypeClassName;
         $generatedFilePaths = $this->classNameMapper->getPossibleFileNames($this->generatedNamespace.'\\'.$generatedTypeClassName);
         if (empty($generatedFilePaths)) {
-            throw new GraphQLGeneratorDirectForeignKeyMethodDescriptorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
+            throw new GraphQLGeneratorNamespaceException('Unable to find a suitable autoload path for class '.$fqcn);
         }
 
         $fileSystem->dumpFile($generatedFilePaths[0], $str);
+    }
+
+    private function isMethodDescriptorExposed(MethodDescriptorInterface $descriptor): bool
+    {
+        if ($descriptor instanceof DirectForeignKeyMethodDescriptor) {
+            // Let's check that the base table is a GraphQL type
+            $remoteTable = $descriptor->getForeignKey()->getLocalTable();
+            $annotations = $this->annotationParser->getTableAnnotations($remoteTable);
+            $type = $annotations->findAnnotation(Type::class);
+
+            return $type !== null;
+        } elseif ($descriptor instanceof PivotTableMethodsDescriptor) {
+            $table = $descriptor->getPivotTable();
+            $annotations = $this->annotationParser->getTableAnnotations($table);
+            $field = $annotations->findAnnotation(\TheCodingMachine\GraphQLite\Annotations\Field::class);
+
+            return $field !== null;
+        } else {
+            throw new GraphQLException('Unexpected method descriptor class.');
+        }
     }
 
     private function generateMainTypeFile(BeanDescriptorInterface $beanDescriptor)
@@ -288,4 +320,5 @@ EOF;
 
         return $code;
     }
+
 }

@@ -3,11 +3,6 @@
 namespace TheCodingMachine\Tdbm\GraphQL;
 
 use PHPUnit\Framework\TestCase;
-use TheCodingMachine\GraphQLite\Registry\Registry;
-use TheCodingMachine\GraphQLite\Security\AuthorizationServiceInterface;
-use TheCodingMachine\GraphQLite\Security\VoidAuthenticationService;
-use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
-use Youshido\GraphQL\Type\Scalar\StringType;
 
 class FieldTest extends TestCase
 {

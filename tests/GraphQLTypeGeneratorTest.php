@@ -14,6 +14,7 @@ use GraphQL\Type\SchemaConfig;
 use Mouf\Picotainer\Picotainer;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Cache\Simple\NullCache;
+use TheCodingMachine\FluidSchema\TdbmFluidSchema;
 use TheCodingMachine\GraphQLite\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationReader as DoctrineAnnotationReader;
 use TheCodingMachine\GraphQLite\Containers\BasicAutoWiringContainer;
@@ -46,7 +47,6 @@ use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractCountryType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\Generated\AbstractUserType;
 use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use TheCodingMachine\TDBM\TDBMService;
-use TheCodingMachine\TDBM\Utils\DefaultNamingStrategy as TdbmDefaultNamingStrategy;
 use PHPUnit\Framework\TestCase;
 use GraphQL\Type\Schema;
 
@@ -174,24 +174,316 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $conn = DriverManager::getConnection(self::getConnectionParams(), $config);
 
-        self::loadSqlFile($conn, __DIR__.'/sql/graphqlunittest.sql');
+        self::initSchema($conn);
     }
 
-    protected static function loadSqlFile(Connection $connection, $sqlFile)
+    private static function initSchema(Connection $connection): void
     {
-        $sql = file_get_contents($sqlFile);
+        $fromSchema = $connection->getSchemaManager()->createSchema();
+        $toSchema = clone $fromSchema;
 
-        $stmt = $connection->prepare($sql);
-        $stmt->execute();
+        $db = new TdbmFluidSchema($toSchema, new \TheCodingMachine\FluidSchema\DefaultNamingStrategy($connection->getDatabasePlatform()));
+
+        $db->table('country')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')->graphql()
+            ->column('label')->string(255)->unique()->graphql();
+
+        $db->table('person')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')->graphql()
+            ->column('name')->string(255)->graphql();
+
+        if ($connection->getDatabasePlatform() instanceof OraclePlatform) {
+            $toSchema->getTable($connection->quoteIdentifier('person'))
+                ->addColumn(
+                    $connection->quoteIdentifier('created_at'),
+                    'datetime',
+                    ['columnDefinition' => 'TIMESTAMP(0) DEFAULT SYSDATE NOT NULL']
+                );
+        } else {
+            $toSchema->getTable('person')
+                ->addColumn(
+                    $connection->quoteIdentifier('created_at'),
+                    'datetime',
+                    ['columnDefinition' => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP']
+                );
+        }
+
+        $db->table('person')
+            ->column('modified_at')->datetime()->null()->graphql()
+            ->column('order')->integer()->null()->graphql();
+
+
+        $db->table('contact')
+            ->extends('person')
+            ->column('email')->string(255)->graphql()
+            ->column('manager_id')->references('contact')->null()->graphql();
+
+        $db->table('users')
+            ->extends('contact')
+            ->column('login')->string(255)
+            ->column('password')->string(255)->null()->graphql()
+            ->column('status')->string(10)->null()->default(null)->graphql()
+            ->column('country_id')->references('country')->graphql();
+
+        $db->table('rights')
+            ->column('label')->string(255)->primaryKey()->comment('Non autoincrementable primary key')->graphql();
+
+        $db->table('roles')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('name')->string(255)->graphql()
+            ->column('created_at')->date()->null()->graphql()
+            ->column('status')->boolean()->null()->default(1)->graphql();
+
+        $db->table('roles_rights')
+            ->column('role_id')->references('roles')
+            ->column('right_label')->references('rights')->then()
+            ->primaryKey(['role_id', 'right_label']);
+
+        $db->junctionTable('users', 'roles')->graphql();
+
+        $db->table('all_nullable')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('label')->string(255)->null()
+            ->column('country_id')->references('country')->null();
+
+        $db->table('animal')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('name')->string(45)->index()
+            ->column('UPPERCASE_COLUMN')->string(45)->null()
+            ->column('order')->integer()->null();
+
+        $db->table('dog')
+            ->extends('animal')
+            ->column('race')->string(45)->null();
+
+        $db->table('cat')
+            ->extends('animal')
+            ->column('cuteness_level')->integer()->null();
+
+        $db->table('panda')
+            ->extends('animal')
+            ->column('weight')->float()->null();
+
+        $db->table('boats')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('name')->string(255)
+            ->column('anchorage_country')->references('country')->notNull()->then()
+            ->column('current_country')->references('country')->null()->then()
+            ->column('length')->decimal(10, 2)->null()->then()
+            ->unique(['anchorage_country', 'name']);
+
+        $db->table('sailed_countries')
+            ->column('boat_id')->references('boats')
+            ->column('country_id')->references('country')
+            ->then()->primaryKey(['boat_id', 'country_id']);
+
+        $db->table('category')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('label')->string(255)
+            ->column('parent_id')->references('category')->null();
+
+        $db->table('articles')
+            ->column('id')->string(36)->primaryKey()->comment('@UUID')
+            ->column('content')->string(255)
+            ->column('author_id')->references('users')->null();
+
+        $db->table('articles2')
+            ->column('id')->string(36)->primaryKey()->comment('@UUID v4')
+            ->column('content')->string(255);
+
+        $db->table('files')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('file')->blob();
+
+        $toSchema->getTable('users')
+            ->addUniqueIndex([$connection->quoteIdentifier('login')], 'users_login_idx')
+            ->addIndex([$connection->quoteIdentifier('status'), $connection->quoteIdentifier('country_id')], 'users_status_country_idx');
+
+        // We create the same index twice
+        // except for Oracle that won't let us create twice the same index.
+        if (!$connection->getDatabasePlatform() instanceof OraclePlatform) {
+            $toSchema->getTable('users')
+                ->addUniqueIndex([$connection->quoteIdentifier('login')], 'users_login_idx_2');
+        }
+
+        // A table with a foreign key that references a non primary key.
+        $db->table('ref_no_prim_key')
+            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->column('from')->string(50)
+            ->column('to')->string(50)->unique();
+
+        $toSchema->getTable($connection->quoteIdentifier('ref_no_prim_key'))->addForeignKeyConstraint($connection->quoteIdentifier('ref_no_prim_key'), [$connection->quoteIdentifier('from')], [$connection->quoteIdentifier('to')]);
+
+        // A table with multiple primary keys.
+        $db->table('states')
+            ->column('country_id')->references('country')
+            ->column('code')->string(3)
+            ->column('name')->string(50)->then()
+            ->primaryKey(['country_id', 'code']);
+
+        $sqlStmts = $toSchema->getMigrateFromSql($fromSchema, $connection->getDatabasePlatform());
+
+        foreach ($sqlStmts as $sqlStmt) {
+            $connection->exec($sqlStmt);
+        }
+
+        self::insert($connection, 'country', [
+            'label' => 'France',
+        ]);
+        self::insert($connection, 'country', [
+            'label' => 'UK',
+        ]);
+        self::insert($connection, 'country', [
+            'label' => 'Jamaica',
+        ]);
+
+        self::insert($connection, 'person', [
+            'name' => 'John Smith',
+            'created_at' => '2015-10-24 11:57:13',
+        ]);
+        self::insert($connection, 'person', [
+            'name' => 'Jean Dupont',
+            'created_at' => '2015-10-24 11:57:13',
+        ]);
+        self::insert($connection, 'person', [
+            'name' => 'Robert Marley',
+            'created_at' => '2015-10-24 11:57:13',
+        ]);
+        self::insert($connection, 'person', [
+            'name' => 'Bill Shakespeare',
+            'created_at' => '2015-10-24 11:57:13',
+        ]);
+
+        self::insert($connection, 'contact', [
+            'id' => 1,
+            'email' => 'john@smith.com',
+            'manager_id' => null,
+        ]);
+        self::insert($connection, 'contact', [
+            'id' => 2,
+            'email' => 'jean@dupont.com',
+            'manager_id' => null,
+        ]);
+        self::insert($connection, 'contact', [
+            'id' => 3,
+            'email' => 'robert@marley.com',
+            'manager_id' => null,
+        ]);
+        self::insert($connection, 'contact', [
+            'id' => 4,
+            'email' => 'bill@shakespeare.com',
+            'manager_id' => 1,
+        ]);
+
+        self::insert($connection, 'rights', [
+            'label' => 'CAN_SING',
+        ]);
+        self::insert($connection, 'rights', [
+            'label' => 'CAN_WRITE',
+        ]);
+
+        self::insert($connection, 'roles', [
+            'name' => 'Admins',
+            'created_at' => '2015-10-24'
+        ]);
+        self::insert($connection, 'roles', [
+            'name' => 'Writers',
+            'created_at' => '2015-10-24'
+        ]);
+        self::insert($connection, 'roles', [
+            'name' => 'Singers',
+            'created_at' => '2015-10-24'
+        ]);
+
+        self::insert($connection, 'roles_rights', [
+            'role_id' => 1,
+            'right_label' => 'CAN_SING'
+        ]);
+        self::insert($connection, 'roles_rights', [
+            'role_id' => 3,
+            'right_label' => 'CAN_SING'
+        ]);
+        self::insert($connection, 'roles_rights', [
+            'role_id' => 1,
+            'right_label' => 'CAN_WRITE'
+        ]);
+        self::insert($connection, 'roles_rights', [
+            'role_id' => 2,
+            'right_label' => 'CAN_WRITE'
+        ]);
+
+        self::insert($connection, 'users', [
+            'id' => 1,
+            'login' => 'john.smith',
+            'password' => null,
+            'status' => 'on',
+            'country_id' => 2
+        ]);
+        self::insert($connection, 'users', [
+            'id' => 2,
+            'login' => 'jean.dupont',
+            'password' => null,
+            'status' => 'on',
+            'country_id' => 1
+        ]);
+        self::insert($connection, 'users', [
+            'id' => 3,
+            'login' => 'robert.marley',
+            'password' => null,
+            'status' => 'off',
+            'country_id' => 3
+        ]);
+        self::insert($connection, 'users', [
+            'id' => 4,
+            'login' => 'bill.shakespeare',
+            'password' => null,
+            'status' => 'off',
+            'country_id' => 2
+        ]);
+
+        self::insert($connection, 'users_roles', [
+            'user_id' => 1,
+            'role_id' => 1,
+        ]);
+        self::insert($connection, 'users_roles', [
+            'user_id' => 2,
+            'role_id' => 1,
+        ]);
+        self::insert($connection, 'users_roles', [
+            'user_id' => 3,
+            'role_id' => 3,
+        ]);
+        self::insert($connection, 'users_roles', [
+            'user_id' => 4,
+            'role_id' => 2,
+        ]);
+        self::insert($connection, 'users_roles', [
+            'user_id' => 3,
+            'role_id' => 2,
+        ]);
+
+        self::insert($connection, 'ref_no_prim_key', [
+            'from' => 'foo',
+            'to' => 'foo',
+        ]);
+    }
+
+    protected static function insert(Connection $connection, string $tableName, array $data): void
+    {
+        $quotedData = [];
+        foreach ($data as $id => $value) {
+            $quotedData[$connection->quoteIdentifier($id)] = $value;
+        }
+        $connection->insert($connection->quoteIdentifier($tableName), $quotedData);
     }
 
     protected static function getTDBMService() : TDBMService
     {
         $config = new \Doctrine\DBAL\Configuration();
         $connection = DriverManager::getConnection(self::getConnectionParams(), $config);
-        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, new TdbmDefaultNamingStrategy(), new ArrayCache(), null, null, [
-            new GraphQLTypeGenerator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL')
-        ]);
+        $configuration = new Configuration('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans', 'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs', $connection, null, new ArrayCache(), null, null, [], null,
+            [ new GraphQLTypeAnnotator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL') ]
+        );
 
         return new TDBMService($configuration);
     }
