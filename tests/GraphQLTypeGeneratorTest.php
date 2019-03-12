@@ -13,6 +13,7 @@ use GraphQL\Type\Definition\Type;
 use GraphQL\Type\SchemaConfig;
 use Mouf\Picotainer\Picotainer;
 use Psr\Container\ContainerInterface;
+use ReflectionMethod;
 use Symfony\Component\Cache\Simple\NullCache;
 use TheCodingMachine\FluidSchema\TdbmFluidSchema;
 use TheCodingMachine\GraphQLite\AnnotationReader;
@@ -39,6 +40,7 @@ use TheCodingMachine\GraphQLite\Types\TypeResolver;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractUser;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\CountryDao;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\UserDao;
@@ -221,8 +223,8 @@ class GraphQLTypeGeneratorTest extends TestCase
         $db->table('users')
             ->extends('contact')
             ->column('login')->string(255)
-            ->column('password')->string(255)->null()->graphql()
-            ->column('status')->string(10)->null()->default(null)->graphql()
+            ->column('password')->string(255)->null()->graphql()->right('CAN_SEE_PASSWORD')->failWith(null)
+            ->column('status')->string(10)->null()->default(null)->graphql()->logged()
             ->column('country_id')->references('country')->graphql();
 
         $db->table('rights')
@@ -239,7 +241,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('right_label')->references('rights')->then()
             ->primaryKey(['role_id', 'right_label']);
 
-        $db->junctionTable('users', 'roles')->graphql();
+        $db->junctionTable('users', 'roles')->graphql()->logged()->right('CAN_SEE_JOIN')->failWith([]);
 
         $db->table('all_nullable')
             ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
@@ -512,6 +514,18 @@ class GraphQLTypeGeneratorTest extends TestCase
         $this->assertNotNull($abstractCountryType->getMethod('getUsersField'));
         $abstractUserType = new \ReflectionClass(AbstractUserType::class);
         $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
+
+        /** @var AnnotationReader $reader */
+        $reader = $this->mainContainer->get(AnnotationReader::class);
+        $right = $reader->getRightAnnotation(new ReflectionMethod(AbstractUser::class, 'getPassword'));
+        $this->assertNotNull($right);
+
+        $failWith = $reader->getFailWithAnnotation(new ReflectionMethod(AbstractUser::class, 'getPassword'));
+        $this->assertNotNull($failWith);
+        $this->assertNull($failWith->getValue());
+
+        $logged = $reader->getLoggedAnnotation(new ReflectionMethod(AbstractUser::class, 'getStatus'));
+        $this->assertNotNull($logged);
     }
 
     /**

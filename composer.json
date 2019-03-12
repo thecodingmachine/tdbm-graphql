@@ -12,14 +12,14 @@
         "thecodingmachine/tdbm": "dev-zend_code as 5.1.0",
         "symfony/filesystem": "^2.0 || ^3.0 || ^4.0",
         "psr/container": "^1.0",
-        "thecodingmachine/graphqlite": "^3"
+        "thecodingmachine/graphqlite": "^3",
+        "thecodingmachine/tdbm-fluid-schema-builder": "^1.0@dev"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.1",
         "satooshi/php-coveralls": "^1.0",
         "mouf/picotainer": "^1.1",
-        "symfony/cache": "^4.2",
-        "thecodingmachine/tdbm-fluid-schema-builder": "^1.0@dev"
+        "symfony/cache": "^4.2"
     },
     "autoload": {
         "psr-4": {

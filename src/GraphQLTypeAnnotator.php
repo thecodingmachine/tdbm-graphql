@@ -5,8 +5,12 @@ namespace TheCodingMachine\Tdbm\GraphQL;
 
 use function array_filter;
 use Mouf\Composer\ClassNameMapper;
+use TheCodingMachine\FluidSchema\DoctrineAnnotationDumper;
+use TheCodingMachine\GraphQLite\Annotations\FailWith;
+use TheCodingMachine\GraphQLite\Annotations\Logged;
 use TheCodingMachine\GraphQLite\Annotations\Type;
 use TheCodingMachine\TDBM\ConfigurationInterface;
+use TheCodingMachine\GraphQLite\Annotations\Right;
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\Annotation\AnnotationParser;
 use TheCodingMachine\TDBM\Utils\BaseCodeGeneratorListener;
@@ -21,6 +25,7 @@ use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
+use TheCodingMachine\GraphQLite\Annotations\Field as GraphQLField;
 use function var_export;
 
 /**
@@ -55,7 +60,7 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
     public function onBaseBeanGenerated(FileGenerator $fileGenerator, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration): ?FileGenerator
     {
         $annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
-        $fileGenerator->setUse(Field::class, 'GraphqlField');
+        $fileGenerator->setUse(GraphQLField::class, 'GraphqlField');
 
         $type = $annotations->findAnnotation(Type::class);
         if ($type !== null) {
@@ -77,7 +82,47 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
     public function onBaseBeanPropertyGenerated(?MethodGenerator $getter, ?MethodGenerator $setter, AbstractBeanPropertyDescriptor $propertyDescriptor, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration, ClassGenerator $classGenerator): array
     {
         if ($getter !== null) {
-            $getter->getDocBlock()->setTag(new GenericTag('GraphqlField', '()'));
+            // Let's analyze the fields
+            if ($propertyDescriptor instanceof ScalarBeanPropertyDescriptor) {
+                $column = $beanDescriptor->getTable()->getColumn($propertyDescriptor->getColumnName());
+                $annotations = $this->annotationParser->getColumnAnnotations($column, $beanDescriptor->getTable());
+
+                /**
+                 * @var GraphQLField $fieldAnnotation
+                 */
+                $fieldAnnotation = $annotations->findAnnotation(GraphQLField::class);
+                if ($fieldAnnotation !== null) {
+                    $parameters = null;
+                    if ($fieldAnnotation->getName() !== null) {
+                        $parameters['name'] = $fieldAnnotation->getName();
+                    }
+                    if ($fieldAnnotation->getOutputType() !== null) {
+                        $parameters['outputType'] = $fieldAnnotation->getOutputType();
+                    }
+                    $getter->getDocBlock()->setTag(new GenericTag('GraphqlField', DoctrineAnnotationDumper::exportValues($parameters)));
+                    if ($annotations->findAnnotation(Logged::class)) {
+                        $getter->getDocBlock()->setTag(new GenericTag(Logged::class));
+                    }
+                    /**
+                     * @var Right $rightAnnotation
+                     */
+                    $rightAnnotation = $annotations->findAnnotation(Right::class);
+                    if ($rightAnnotation !== null) {
+                        $getter->getDocBlock()->setTag(new GenericTag(Right::class, DoctrineAnnotationDumper::exportValues(['name'=>$rightAnnotation->getName()])));
+                    }
+                    /**
+                     * @var FailWith $failWith
+                     */
+                    $failWith = $annotations->findAnnotation(FailWith::class);
+                    if ($failWith !== null) {
+                        $content = DoctrineAnnotationDumper::exportValues($failWith->getValue()) ?: '(null)';
+                        $getter->getDocBlock()->setTag(new GenericTag(FailWith::class, $content));
+                    }
+                }
+            }
+
+
+
         }
         return [$getter, $setter];
     }
@@ -176,7 +221,7 @@ EOF;
         } elseif ($descriptor instanceof PivotTableMethodsDescriptor) {
             $table = $descriptor->getPivotTable();
             $annotations = $this->annotationParser->getTableAnnotations($table);
-            $field = $annotations->findAnnotation(\TheCodingMachine\GraphQLite\Annotations\Field::class);
+            $field = $annotations->findAnnotation(GraphQLField::class);
 
             return $field !== null;
         } else {
