@@ -93,11 +93,10 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
 
                 $annotations = $this->annotationParser->getColumnAnnotations($column, $beanDescriptor->getTable());
                 $this->alterGetter($getter, $annotations);
-
             } elseif ($propertyDescriptor instanceof ObjectBeanPropertyDescriptor) {
                 $columnNames = $propertyDescriptor->getForeignKey()->getLocalColumns();
 
-                $columns = array_map(function(string $columnName) use ($beanDescriptor) {
+                $columns = array_map(function (string $columnName) use ($beanDescriptor) {
                     return $beanDescriptor->getTable()->getColumn($columnName);
                 }, $columnNames);
 
@@ -126,7 +125,7 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
     {
         $columnNames = $directForeignKeyMethodDescriptor->getForeignKey()->getLocalColumns();
 
-        $columns = array_map(function(string $columnName) use ($directForeignKeyMethodDescriptor) {
+        $columns = array_map(function (string $columnName) use ($directForeignKeyMethodDescriptor) {
             return $directForeignKeyMethodDescriptor->getForeignKey()->getLocalTable()->getColumn($columnName);
         }, $columnNames);
 
