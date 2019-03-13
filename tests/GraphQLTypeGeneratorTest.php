@@ -40,6 +40,8 @@ use TheCodingMachine\GraphQLite\Types\TypeResolver;
 use TheCodingMachine\TDBM\Configuration;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractCountry;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractRole;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractUser;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
 use TheCodingMachine\Tdbm\GraphQL\Tests\DAOs\CountryDao;
@@ -187,12 +189,13 @@ class GraphQLTypeGeneratorTest extends TestCase
         $db = new TdbmFluidSchema($toSchema, new \TheCodingMachine\FluidSchema\DefaultNamingStrategy($connection->getDatabasePlatform()));
 
         $db->table('country')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')->graphql()
+            ->id()->graphql()
             ->column('label')->string(255)->unique()->graphql();
 
         $db->table('person')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')->graphql()
+            ->id()->graphql()
             ->column('name')->string(255)->graphql();
+
 
         if ($connection->getDatabasePlatform() instanceof OraclePlatform) {
             $toSchema->getTable($connection->quoteIdentifier('person'))
@@ -231,7 +234,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('label')->string(255)->primaryKey()->comment('Non autoincrementable primary key')->graphql();
 
         $db->table('roles')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('name')->string(255)->graphql()
             ->column('created_at')->date()->null()->graphql()
             ->column('status')->boolean()->null()->default(1)->graphql();
@@ -244,12 +247,12 @@ class GraphQLTypeGeneratorTest extends TestCase
         $db->junctionTable('users', 'roles')->graphql()->logged()->right('CAN_SEE_JOIN')->failWith([]);
 
         $db->table('all_nullable')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('label')->string(255)->null()
             ->column('country_id')->references('country')->null();
 
         $db->table('animal')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('name')->string(45)->index()
             ->column('UPPERCASE_COLUMN')->string(45)->null()
             ->column('order')->integer()->null();
@@ -267,7 +270,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('weight')->float()->null();
 
         $db->table('boats')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('name')->string(255)
             ->column('anchorage_country')->references('country')->notNull()->then()
             ->column('current_country')->references('country')->null()->then()
@@ -280,7 +283,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->then()->primaryKey(['boat_id', 'country_id']);
 
         $db->table('category')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('label')->string(255)
             ->column('parent_id')->references('category')->null();
 
@@ -294,7 +297,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('content')->string(255);
 
         $db->table('files')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('file')->blob();
 
         $toSchema->getTable('users')
@@ -310,7 +313,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         // A table with a foreign key that references a non primary key.
         $db->table('ref_no_prim_key')
-            ->column('id')->integer()->primaryKey()->autoIncrement()->comment('@Autoincrement')
+            ->id()
             ->column('from')->string(50)
             ->column('to')->string(50)->unique();
 
@@ -526,6 +529,18 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $logged = $reader->getLoggedAnnotation(new ReflectionMethod(AbstractUser::class, 'getStatus'));
         $this->assertNotNull($logged);
+
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getId'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $this->assertSame('ID', $field->getOutputType());
+
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getRoles'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $this->assertNotNull($field);
+
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractRole::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $this->assertNotNull($field);
+
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $this->assertNotNull($field);
     }
 
     /**
