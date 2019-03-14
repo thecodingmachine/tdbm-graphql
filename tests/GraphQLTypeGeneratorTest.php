@@ -2,10 +2,12 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use function copy;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use GraphQL\Error\Debug;
 use GraphQL\GraphQL;
 use GraphQL\Type\Definition\InputType;
 use GraphQL\Type\Definition\ObjectType;
@@ -13,6 +15,7 @@ use GraphQL\Type\Definition\Type;
 use GraphQL\Type\SchemaConfig;
 use Mouf\Picotainer\Picotainer;
 use Psr\Container\ContainerInterface;
+use Psr\SimpleCache\CacheInterface;
 use ReflectionMethod;
 use Symfony\Component\Cache\Simple\NullCache;
 use TheCodingMachine\FluidSchema\TdbmFluidSchema;
@@ -30,6 +33,7 @@ use TheCodingMachine\GraphQLite\Mappers\RecursiveTypeMapperInterface;
 use TheCodingMachine\GraphQLite\Mappers\TypeMapperInterface;
 use TheCodingMachine\GraphQLite\NamingStrategy;
 use TheCodingMachine\GraphQLite\Reflection\CachedDocBlockFactory;
+use TheCodingMachine\GraphQLite\SchemaFactory;
 use TheCodingMachine\GraphQLite\Security\AuthenticationServiceInterface;
 use TheCodingMachine\GraphQLite\Security\AuthorizationServiceInterface;
 use TheCodingMachine\GraphQLite\Security\VoidAuthenticationService;
@@ -38,9 +42,12 @@ use TheCodingMachine\GraphQLite\TypeGenerator;
 use TheCodingMachine\GraphQLite\TypeRegistry;
 use TheCodingMachine\GraphQLite\Types\TypeResolver;
 use TheCodingMachine\TDBM\Configuration;
+use TheCodingMachine\Tdbm\GraphQL\Fixtures\Controllers\CountryController;
+use TheCodingMachine\Tdbm\GraphQL\Fixtures\Controllers\UserController;
 use TheCodingMachine\Tdbm\GraphQL\Registry\EmptyContainer;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractCountry;
+use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractFile;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractRole;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Generated\AbstractUser;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
@@ -53,6 +60,8 @@ use TheCodingMachine\Tdbm\GraphQL\Tests\GraphQL\UserType;
 use TheCodingMachine\TDBM\TDBMService;
 use PHPUnit\Framework\TestCase;
 use GraphQL\Type\Schema;
+use function var_dump;
+use function var_export;
 
 class GraphQLTypeGeneratorTest extends TestCase
 {
@@ -64,19 +73,17 @@ class GraphQLTypeGeneratorTest extends TestCase
     public function setUp()
     {
         $this->mainContainer = new Picotainer([
-            FieldsBuilderFactory::class => function (ContainerInterface $container) {
-                return new FieldsBuilderFactory(
-                    $container->get(AnnotationReader::class),
-                    $container->get(HydratorInterface::class),
-                    $container->get(AuthenticationServiceInterface::class),
-                    $container->get(AuthorizationServiceInterface::class),
-                    $container->get(TypeResolver::class),
-                    $container->get(CachedDocBlockFactory::class),
-                    $container->get(NamingStrategyInterface::class)
-                );
+            Schema::class => function(ContainerInterface $container) {
+                $factory = new SchemaFactory(new \Symfony\Component\Cache\Simple\ArrayCache(), $container->get(BasicAutoWiringContainer::class));
+                $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
+                $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans');
+                $factory->addControllerNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Fixtures\\Controllers');
+                $factory->setAuthorizationService($container->get(AuthorizationServiceInterface::class));
+                $factory->setAuthenticationService($container->get(AuthenticationServiceInterface::class));
+                return $factory->createSchema();
             },
             BasicAutoWiringContainer::class => function (ContainerInterface $container) {
-                return new BasicAutoWiringContainer(new EmptyContainer());
+                return new BasicAutoWiringContainer($container);
             },
             AuthorizationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthorizationService();
@@ -84,66 +91,14 @@ class GraphQLTypeGeneratorTest extends TestCase
             AuthenticationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthenticationService();
             },
-            RecursiveTypeMapperInterface::class => function (ContainerInterface $container) {
-                return new RecursiveTypeMapper(
-                    $container->get(TypeMapperInterface::class),
-                    $container->get(NamingStrategyInterface::class),
-                    new \Symfony\Component\Cache\Simple\ArrayCache(),
-                    $container->get(TypeRegistry::class)
-                );
+            UserController::class => function(ContainerInterface $container): UserController {
+                $tdbmService = self::getTDBMService();
+                return new UserController(new UserDao($tdbmService));
             },
-            TypeMapperInterface::class => function (ContainerInterface $container) {
-                return new GlobTypeMapper(
-                    'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL',
-                    $container->get(TypeGenerator::class),
-                    $container->get(InputTypeGenerator::class),
-                    $container->get(InputTypeUtils::class),
-                    $container->get(BasicAutoWiringContainer::class),
-                    $container->get(AnnotationReader::class),
-                    $container->get(NamingStrategyInterface::class),
-                    new \Symfony\Component\Cache\Simple\ArrayCache()
-                );
-            },
-            TypeGenerator::class => function (ContainerInterface $container) {
-                return new TypeGenerator(
-                    $container->get(AnnotationReader::class),
-                    $container->get(FieldsBuilderFactory::class),
-                    $container->get(NamingStrategyInterface::class),
-                    $container->get(TypeRegistry::class),
-                    $container->get(BasicAutoWiringContainer::class)
-                );
-            },
-            TypeRegistry::class => function () {
-                return new TypeRegistry();
-            },
-            AnnotationReader::class => function (ContainerInterface $container) {
-                return new AnnotationReader(new DoctrineAnnotationReader());
-            },
-            HydratorInterface::class => function (ContainerInterface $container) {
-                return new FactoryHydrator();
-            },
-            InputTypeGenerator::class => function (ContainerInterface $container) {
-                return new InputTypeGenerator(
-                    $container->get(InputTypeUtils::class),
-                    $container->get(FieldsBuilderFactory::class),
-                    $container->get(HydratorInterface::class)
-                );
-            },
-            InputTypeUtils::class => function (ContainerInterface $container) {
-                return new InputTypeUtils(
-                    $container->get(AnnotationReader::class),
-                    $container->get(NamingStrategyInterface::class)
-                );
-            },
-            TypeResolver::class => function (ContainerInterface $container) {
-                return new TypeResolver();
-            },
-            CachedDocBlockFactory::class => function () {
-                return new CachedDocBlockFactory(new \Symfony\Component\Cache\Simple\ArrayCache());
-            },
-            NamingStrategyInterface::class => function () {
-                return new NamingStrategy();
-            },
+            CountryController::class => function(ContainerInterface $container): CountryController {
+                $tdbmService = self::getTDBMService();
+                return new CountryController(new CountryDao($tdbmService));
+            }
         ]);
     }
 
@@ -244,7 +199,7 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('right_label')->references('rights')->then()
             ->primaryKey(['role_id', 'right_label']);
 
-        $db->junctionTable('users', 'roles')->graphql()->logged()->right('CAN_SEE_JOIN')->failWith([]);
+        $db->junctionTable('users', 'roles')->graphql();
 
         $db->table('all_nullable')
             ->id()
@@ -297,8 +252,10 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('content')->string(255);
 
         $db->table('files')
-            ->id()
+            ->id()->graphql()
             ->column('file')->blob();
+
+        $db->junctionTable('users', 'files')->graphql()->logged()->right('CAN_SEE_JOIN')->failWith([]);
 
         $toSchema->getTable('users')
             ->addUniqueIndex([$connection->quoteIdentifier('login')], 'users_login_idx')
@@ -486,6 +443,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $config = new \Doctrine\DBAL\Configuration();
         $connection = DriverManager::getConnection(self::getConnectionParams(), $config);
+        $annotator = new GraphQLTypeAnnotator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
         $configuration = new Configuration(
             'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans',
             'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs',
@@ -494,9 +452,9 @@ class GraphQLTypeGeneratorTest extends TestCase
             new ArrayCache(),
             null,
             null,
-            [],
+            [ $annotator ],
             null,
-            [ new GraphQLTypeAnnotator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL') ]
+            [ $annotator ]
         );
 
         return new TDBMService($configuration);
@@ -519,7 +477,7 @@ class GraphQLTypeGeneratorTest extends TestCase
         $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
 
         /** @var AnnotationReader $reader */
-        $reader = $this->mainContainer->get(AnnotationReader::class);
+        $reader = new AnnotationReader(new \Doctrine\Common\Annotations\AnnotationReader());
         $right = $reader->getRightAnnotation(new ReflectionMethod(AbstractUser::class, 'getPassword'));
         $this->assertNotNull($right);
 
@@ -533,13 +491,13 @@ class GraphQLTypeGeneratorTest extends TestCase
         $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getId'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertSame('ID', $field->getOutputType());
 
-        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getRoles'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getFiles'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertNotNull($field);
 
-        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractRole::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractFile::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertNotNull($field);
 
-        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractFile::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertNotNull($field);
     }
 
@@ -548,30 +506,7 @@ class GraphQLTypeGeneratorTest extends TestCase
      */
     public function testQuery()
     {
-        $tdbmService = self::getTDBMService();
-        $userDao = new UserDao($tdbmService);
-        //$container = new EmptyContainer();
-        /*$typeMapper = new TdbmGraphQLTypeMapper();
-        $registry = TestRegistryFactory::build($container, null, null, null, $typeMapper);
-        $typeMapper->setContainer($registry);*/
-
-
-        $queryType = new ObjectType([
-            'name' => 'Query',
-            'fields' => [
-                'users' => [
-                    'type'    => Type::listOf($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(User::class, null)),
-                    'resolve' => function () use ($userDao) {
-                        return $userDao->findAll();
-                    }
-                ]
-            ]
-        ]);
-
-
-        $schema = new Schema([
-            'query' => $queryType
-        ]);
+        $schema = $this->mainContainer->get(Schema::class);
 
         $introspectionQuery = <<<EOF
 {
@@ -583,7 +518,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 }
 EOF;
 
-        $response = GraphQL::executeQuery($schema, $introspectionQuery)->toArray();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertTrue(isset($response['data']['__schema']['queryType']['name']));
 
         $introspectionQuery2 = <<<EOF
@@ -602,7 +537,7 @@ EOF;
 }
 EOF;
 
-        $response = GraphQL::executeQuery($schema, $introspectionQuery2)->toArray();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery2)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('User', $response['data']['__type']['name']);
         $this->assertSame('OBJECT', $response['data']['__type']['kind']);
         $this->assertSame('id', $response['data']['__type']['fields'][0]['name']);
@@ -628,7 +563,7 @@ EOF;
   }
 }
 EOF;
-        $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray();
+        $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('John Smith', $response['data']['users'][0]['name']);
         $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
     }
@@ -656,31 +591,33 @@ EOF;
 
     public function testResultIteratorType()
     {
-        $type = new ResultIteratorType($this->mainContainer->get(RecursiveTypeMapperInterface::class)->mapClassToType(Country::class, null));
+        $schema = $this->mainContainer->get(Schema::class);
+        $query = <<<EOF
+{
+  countries {
+    items(offset: 1, limit: 1) {
+        label
+    }
+    count
+  }
+}
+EOF;
+        $response = GraphQL::executeQuery($schema, $query)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
 
-        $tdbmService = self::getTDBMService();
-        $countryDao = new CountryDao($tdbmService);
-
-        $countries = $countryDao->findAll();
-
-        $countField = $type->getField('count');
-        $resolveInfo = $this->getMockBuilder(ResolveInfo::class)->disableOriginalConstructor()->getMock();
-        $resolveCallback = $countField->resolveFn;
-        $this->assertEquals(3, $resolveCallback($countries, [], $resolveInfo));
-
-        $itemsField = $type->getField('items');
-        $resolveCallback = $itemsField->resolveFn;
-        $result = $resolveCallback($countries, [], $resolveInfo);
-        $this->assertCount(3, $result);
-        $this->assertInstanceOf(Country::class, $result[0]);
-
-        $result = $resolveCallback($countries, ['order'=>'label'], $resolveInfo);
-        $this->assertEquals('Jamaica', $result[1]->getLabel());
-
-        $result = $resolveCallback($countries, ['offset'=>1, 'limit'=>1], $resolveInfo);
-        $this->assertCount(1, $result);
-
-        $this->expectException(GraphQLException::class);
-        $result = $resolveCallback($countries, ['offset'=>1], $resolveInfo);
+        $this->assertSame([
+            'data' =>
+                [
+                    'countries' =>
+                        [
+                            'items' =>
+                                [
+                                        [
+                                            'label' => 'Jamaica',
+                                        ],
+                                ],
+                            'count' => 3,
+                        ],
+                ],
+        ], $response);
     }
 }

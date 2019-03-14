@@ -7,6 +7,9 @@ use function array_filter;
 use function array_map;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\Table;
+use function file_exists;
+use function file_get_contents;
+use function file_put_contents;
 use Mouf\Composer\ClassNameMapper;
 use TheCodingMachine\FluidSchema\DoctrineAnnotationDumper;
 use TheCodingMachine\GraphQLite\Annotations\FailWith;
@@ -14,12 +17,14 @@ use TheCodingMachine\GraphQLite\Annotations\Logged;
 use TheCodingMachine\GraphQLite\Annotations\Type;
 use TheCodingMachine\TDBM\ConfigurationInterface;
 use TheCodingMachine\GraphQLite\Annotations\Right;
+use TheCodingMachine\Tdbm\GraphQL\Annotations\AnnotationAdder;
 use TheCodingMachine\TDBM\Utils\AbstractBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\Annotation\AnnotationParser;
 use TheCodingMachine\TDBM\Utils\Annotation\Annotations;
 use TheCodingMachine\TDBM\Utils\BaseCodeGeneratorListener;
 use TheCodingMachine\TDBM\Utils\BeanDescriptor;
 use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
+use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\PivotTableMethodsDescriptor;
 use Zend\Code\Generator\ClassGenerator;
@@ -36,12 +41,32 @@ use function var_export;
 /**
  * Annotates TDBM beans by adding "Type" and "Field" annotations.
  */
-class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
+class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements GeneratorListenerInterface
 {
     /**
      * @var AnnotationParser
      */
     private $annotationParser;
+    /**
+     * @var string
+     */
+    private $namespace;
+    /**
+     * @var string
+     */
+    private $generatedNamespace;
+    /**
+     * @var NamingStrategyInterface
+     */
+    private $namingStrategy;
+    /**
+     * @var ClassNameMapper
+     */
+    private $classNameMapper;
+    /**
+     * @var bool
+     */
+    private $exposeAllBeans = false;
 
     /**
      * @param string $namespace The namespace the type classes will be written in.
@@ -62,19 +87,30 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
         $this->annotationParser = $annotationParser ?: AnnotationParser::buildWithDefaultAnnotations([]);
     }
 
+    /**
+     * Exposes all tables as types.
+     * For compatibility with 3.0 release.
+     *
+     * @deprecated
+     */
+    public function exposeAllBeansAsTypes(): void
+    {
+        $this->exposeAllBeans = true;
+    }
+
     public function onBaseBeanGenerated(FileGenerator $fileGenerator, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration): ?FileGenerator
     {
-        $annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
+        //$annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
         $fileGenerator->setUse(GraphQLField::class, 'GraphqlField');
 
-        $type = $annotations->findAnnotation(Type::class);
-        if ($type !== null) {
+        /*$type = $annotations->findAnnotation(Type::class);
+        if ($type !== null || $this->exposeAllBeans === true) {
             $fileGenerator->setUse(Type::class, 'GraphqlType');
             $fileGenerator->getClass()->getDocBlock()->setTag(new GenericTag('GraphqlType'));
 
             $this->generateAbstractTypeFile($beanDescriptor);
             $this->generateMainTypeFile($beanDescriptor);
-        }
+        }*/
 
         return $fileGenerator;
     }
@@ -234,12 +270,12 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener
 namespace {$this->generatedNamespace};
 
 use TheCodingMachine\GraphQLite\Registry\RegistryInterface;
-use TheCodingMachine\GraphQLite\Annotations\Type;
+use TheCodingMachine\GraphQLite\Annotations\ExtendType;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 
 /**
- * @Type(class=$beanFullClassName::class)
+ * @ExtendType(class=$beanFullClassName::class)
  */
 abstract class $generatedTypeClassName extends $baseClassName
 {
@@ -278,7 +314,7 @@ EOF;
             $annotations = $this->annotationParser->getTableAnnotations($remoteTable);
             $type = $annotations->findAnnotation(Type::class);
 
-            return $type !== null;
+            return $type !== null || $this->exposeAllBeans === true;
         } elseif ($descriptor instanceof PivotTableMethodsDescriptor) {
             $table = $descriptor->getPivotTable();
             $annotations = $this->annotationParser->getTableAnnotations($table);
@@ -329,7 +365,8 @@ class $typeClassName extends $generatedTypeClassName
     public function alter(): void
     {
         $alterParentCall// You can alter the fields of this type here.
-        \$this->showAll();
+        // Uncomment the line below to expose all the fields.
+        //\$this->showAll();
     }
 }
 
@@ -425,5 +462,34 @@ EOF;
 EOF;
 
         return $code;
+    }
+
+    /**
+     * @param ConfigurationInterface $configuration
+     * @param BeanDescriptorInterface[] $beanDescriptors
+     */
+    public function onGenerate(ConfigurationInterface $configuration, array $beanDescriptors): void
+    {
+        $annotationAdder = new AnnotationAdder();
+
+        foreach ($beanDescriptors as $beanDescriptor) {
+            $annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
+            $type = $annotations->findAnnotation(Type::class);
+            if ($type !== null || $this->exposeAllBeans === true) {
+                $beanFilePath = $configuration->getPathFinder()->getPath($configuration->getBeanNamespace().'\\'.$beanDescriptor->getBeanClassName());
+
+                if ($beanFilePath->isFile()) {
+                    $code = file_get_contents($beanFilePath);
+
+                    if (!$annotationAdder->hasAnnotation($code)) {
+                        $code = $annotationAdder->addAnnotation($code);
+                        file_put_contents($beanFilePath, $code);
+                    }
+                }
+
+                $this->generateAbstractTypeFile($beanDescriptor);
+                $this->generateMainTypeFile($beanDescriptor);
+            }
+        }
     }
 }
