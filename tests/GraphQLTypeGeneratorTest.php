@@ -144,12 +144,12 @@ class GraphQLTypeGeneratorTest extends TestCase
         $db = new TdbmFluidSchema($toSchema, new \TheCodingMachine\FluidSchema\DefaultNamingStrategy($connection->getDatabasePlatform()));
 
         $db->table('country')
-            ->id()->graphql()
-            ->column('label')->string(255)->unique()->graphql();
+            ->id()->graphqlField()
+            ->column('label')->string(255)->unique()->graphqlField();
 
         $db->table('person')
-            ->id()->graphql()
-            ->column('name')->string(255)->graphql();
+            ->id()->graphqlField()
+            ->column('name')->string(255)->graphqlField();
 
 
         if ($connection->getDatabasePlatform() instanceof OraclePlatform) {
@@ -169,37 +169,37 @@ class GraphQLTypeGeneratorTest extends TestCase
         }
 
         $db->table('person')
-            ->column('modified_at')->datetime()->null()->graphql()
-            ->column('order')->integer()->null()->graphql();
+            ->column('modified_at')->datetime()->null()->graphqlField()
+            ->column('order')->integer()->null()->graphqlField();
 
 
         $db->table('contact')
             ->extends('person')
-            ->column('email')->string(255)->graphql()
-            ->column('manager_id')->references('contact')->null()->graphql();
+            ->column('email')->string(255)->graphqlField()
+            ->column('manager_id')->references('contact')->null()->graphqlField();
 
         $db->table('users')
             ->extends('contact')
             ->column('login')->string(255)
-            ->column('password')->string(255)->null()->graphql()->right('CAN_SEE_PASSWORD')->failWith(null)
-            ->column('status')->string(10)->null()->default(null)->graphql()->logged()
-            ->column('country_id')->references('country')->graphql();
+            ->column('password')->string(255)->null()->graphqlField()->right('CAN_SEE_PASSWORD')->failWith(null)
+            ->column('status')->string(10)->null()->default(null)->graphqlField()->logged()
+            ->column('country_id')->references('country')->graphqlField();
 
         $db->table('rights')
-            ->column('label')->string(255)->primaryKey()->comment('Non autoincrementable primary key')->graphql();
+            ->column('label')->string(255)->primaryKey()->comment('Non autoincrementable primary key')->graphqlField();
 
         $db->table('roles')
             ->id()
-            ->column('name')->string(255)->graphql()
-            ->column('created_at')->date()->null()->graphql()
-            ->column('status')->boolean()->null()->default(1)->graphql();
+            ->column('name')->string(255)->graphqlField()
+            ->column('created_at')->date()->null()->graphqlField()
+            ->column('status')->boolean()->null()->default(1)->graphqlField();
 
         $db->table('roles_rights')
             ->column('role_id')->references('roles')
             ->column('right_label')->references('rights')->then()
             ->primaryKey(['role_id', 'right_label']);
 
-        $db->junctionTable('users', 'roles')->graphql();
+        $db->junctionTable('users', 'roles')->graphqlField();
 
         $db->table('all_nullable')
             ->id()
@@ -252,10 +252,10 @@ class GraphQLTypeGeneratorTest extends TestCase
             ->column('content')->string(255);
 
         $db->table('files')
-            ->id()->graphql()
+            ->id()->graphqlField()
             ->column('file')->blob();
 
-        $db->junctionTable('users', 'files')->graphql()->logged()->right('CAN_SEE_JOIN')->failWith([]);
+        $db->junctionTable('users', 'files')->graphqlField()->logged()->right('CAN_SEE_JOIN')->failWith([]);
 
         $toSchema->getTable('users')
             ->addUniqueIndex([$connection->quoteIdentifier('login')], 'users_login_idx')
