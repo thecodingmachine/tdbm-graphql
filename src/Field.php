@@ -8,6 +8,9 @@ use TheCodingMachine\GraphQLite\Annotations\Right;
 use TheCodingMachine\GraphQLite\Annotations\SourceFieldInterface;
 use TheCodingMachine\Tdbm\GraphQL\Registry\Registry;
 
+/**
+ * @deprecated Use db column "Field" annotation instead
+ */
 class Field implements SourceFieldInterface
 {
     private $hide = true;
@@ -45,21 +48,24 @@ class Field implements SourceFieldInterface
     
     /**
      * Hides this field.
+     * @deprecated Use db column "Field" annotation instead
      */
-    public function hide()
+    public function hide(): void
     {
         $this->hide = true;
     }
 
     /**
      * Show this field if it was previously hidden.
+     * @deprecated Use db column "Field" annotation instead
      */
-    public function show()
+    public function show(): void
     {
         $this->hide = false;
     }
 
     /**
+     * @deprecated
      * @return bool
      */
     public function isHidden(): bool
@@ -69,6 +75,7 @@ class Field implements SourceFieldInterface
 
     /**
      * The user must be logged to access this field.
+     * @deprecated Use db column "Logged" annotation instead
      */
     public function logged(): self
     {
@@ -78,6 +85,7 @@ class Field implements SourceFieldInterface
 
     /**
      * The user must have right $right to access this field.
+     * @deprecated Use db column "Right" annotation instead
      */
     public function requiresRight(string $right): self
     {
@@ -85,6 +93,9 @@ class Field implements SourceFieldInterface
         return $this;
     }
 
+    /**
+     * @deprecated Use db column "FailWith" annotation instead
+     */
     public function failWith($defaultValue): self
     {
         $this->failWithValue = $defaultValue;
@@ -95,6 +106,7 @@ class Field implements SourceFieldInterface
     /**
      * Returns the GraphQL right to be applied to this source field.
      *
+     * @deprecated
      * @return Right|null
      */
     public function getRight(): ?Right
@@ -110,6 +122,7 @@ class Field implements SourceFieldInterface
      * Returns the name of the GraphQL query/mutation/field.
      * If not specified, the name of the method should be used instead.
      *
+     * @deprecated
      * @return null|string
      */
     public function getName(): ?string
@@ -118,6 +131,7 @@ class Field implements SourceFieldInterface
     }
 
     /**
+     * @deprecated
      * @return bool
      */
     public function isLogged(): bool
@@ -129,6 +143,7 @@ class Field implements SourceFieldInterface
      * Returns the GraphQL return type of the request (as a string).
      * The string is the GraphQL output type name.
      *
+     * @deprecated
      * @return string|null
      */
     public function getOutputType(): ?string
@@ -139,6 +154,7 @@ class Field implements SourceFieldInterface
     /**
      * If the GraphQL type is "ID", isID will return true.
      *
+     * @deprecated
      * @return bool
      */
     public function isId(): bool
@@ -149,6 +165,7 @@ class Field implements SourceFieldInterface
     /**
      * Returns the default value to use if the right is not enforced.
      *
+     * @deprecated
      * @return mixed
      */
     public function getFailWith()
@@ -159,6 +176,7 @@ class Field implements SourceFieldInterface
     /**
      * True if a default value is available if a right is not enforced.
      *
+     * @deprecated
      * @return bool
      */
     public function canFailWith()
