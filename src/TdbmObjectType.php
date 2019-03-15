@@ -25,7 +25,6 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
      */
     public function alter(): void
     {
-
     }
 
     /**
