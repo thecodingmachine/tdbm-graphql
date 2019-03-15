@@ -13,7 +13,8 @@
         "symfony/filesystem": "^2.0 || ^3.0 || ^4.0",
         "psr/container": "^1",
         "thecodingmachine/graphqlite": "^3",
-        "thecodingmachine/tdbm-fluid-schema-builder": "^1"
+        "thecodingmachine/tdbm-fluid-schema-builder": "^1",
+        "doctrine/dbal": "^2.9.2"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.5.14",
