@@ -12,6 +12,7 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
     /**
      * Returns the list of fields coming from TDBM beans.
      *
+     * @deprecated With DB column annotations instead
      * @return Field[]
      */
     protected function getFieldList(): array
@@ -19,7 +20,13 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
         return [];
     }
 
-    abstract public function alter(): void;
+    /**
+     * @deprecated With DB column annotations instead
+     */
+    public function alter(): void
+    {
+
+    }
 
     /**
      * Dynamically returns the array of source fields to be fetched from the original object.
@@ -34,6 +41,9 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
         });
     }
 
+    /**
+     * @deprecated With DB column annotations instead
+     */
     protected function showAll(): void
     {
         foreach ($this->getFieldList() as $field) {
@@ -41,6 +51,9 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
         }
     }
 
+    /**
+     * @deprecated With DB column annotations instead
+     */
     protected function hideAll(): void
     {
         foreach ($this->getFieldList() as $field) {

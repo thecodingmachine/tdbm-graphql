@@ -362,12 +362,12 @@ class $typeClassName extends $generatedTypeClassName
     /**
      * Alters the list of properties for this type.
      */
-    public function alter(): void
+    /*public function alter(): void
     {
         $alterParentCall// You can alter the fields of this type here.
         // Uncomment the line below to expose all the fields.
         //\$this->showAll();
-    }
+    }*/
 }
 
 EOF;
