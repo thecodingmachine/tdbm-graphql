@@ -36,12 +36,6 @@
             "dev-master": "3.1.x-dev"
         }
     },
-    "repositories": [
-        {
-            "url": "https://github.com/moufmouf/tdbm/",
-            "type": "vcs"
-        }
-    ],
     "minimum-stability": "dev",
     "prefer-stable": true
 }
