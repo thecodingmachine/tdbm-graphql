@@ -73,7 +73,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     public function setUp()
     {
         $this->mainContainer = new Picotainer([
-            Schema::class => function(ContainerInterface $container) {
+            Schema::class => function (ContainerInterface $container) {
                 $factory = new SchemaFactory(new \Symfony\Component\Cache\Simple\ArrayCache(), $container->get(BasicAutoWiringContainer::class));
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans');
@@ -91,11 +91,11 @@ class GraphQLTypeGeneratorTest extends TestCase
             AuthenticationServiceInterface::class => function (ContainerInterface $container) {
                 return new VoidAuthenticationService();
             },
-            UserController::class => function(ContainerInterface $container): UserController {
+            UserController::class => function (ContainerInterface $container): UserController {
                 $tdbmService = self::getTDBMService();
                 return new UserController(new UserDao($tdbmService));
             },
-            CountryController::class => function(ContainerInterface $container): CountryController {
+            CountryController::class => function (ContainerInterface $container): CountryController {
                 $tdbmService = self::getTDBMService();
                 return new CountryController(new CountryDao($tdbmService));
             }

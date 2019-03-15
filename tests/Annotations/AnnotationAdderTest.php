@@ -19,7 +19,7 @@ class AnnotationAdderTest extends TestCase
         $this->assertContains(" @Type\n */\nclass", $code);
         $this->assertContains('use TheCodingMachine\\GraphQLite\\Annotations\\Type;', $code);
 
-        $code = $adder->addAnnotation(str_replace('class ', 'final class ',$initialCode));
+        $code = $adder->addAnnotation(str_replace('class ', 'final class ', $initialCode));
         $this->assertContains(" @Type\n */\nfinal class", $code);
         $this->assertContains('use TheCodingMachine\\GraphQLite\\Annotations\\Type;', $code);
 

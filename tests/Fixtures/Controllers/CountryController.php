@@ -3,7 +3,6 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL\Fixtures\Controllers;
 
-
 use TheCodingMachine\GraphQLite\Annotations\Query;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\Country;
 use TheCodingMachine\Tdbm\GraphQL\Tests\Beans\User;
