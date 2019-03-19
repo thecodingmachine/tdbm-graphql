@@ -144,7 +144,7 @@ class GraphQLTypeGeneratorTest extends TestCase
         $db = new TdbmFluidSchema($toSchema, new \TheCodingMachine\FluidSchema\DefaultNamingStrategy($connection->getDatabasePlatform()));
 
         $db->table('country')
-            ->id()->graphqlField()
+            ->uuid()->graphqlField()
             ->column('label')->string(255)->unique()->graphqlField();
 
         $db->table('person')
@@ -290,12 +290,15 @@ class GraphQLTypeGeneratorTest extends TestCase
         }
 
         self::insert($connection, 'country', [
+            'uuid' => 'foo',
             'label' => 'France',
         ]);
         self::insert($connection, 'country', [
+            'uuid' => 'bar',
             'label' => 'UK',
         ]);
         self::insert($connection, 'country', [
+            'uuid' => 'baz',
             'label' => 'Jamaica',
         ]);
 
@@ -379,28 +382,28 @@ class GraphQLTypeGeneratorTest extends TestCase
             'login' => 'john.smith',
             'password' => null,
             'status' => 'on',
-            'country_id' => 2
+            'country_id' => 'bar'
         ]);
         self::insert($connection, 'users', [
             'id' => 2,
             'login' => 'jean.dupont',
             'password' => null,
             'status' => 'on',
-            'country_id' => 1
+            'country_id' => 'foo'
         ]);
         self::insert($connection, 'users', [
             'id' => 3,
             'login' => 'robert.marley',
             'password' => null,
             'status' => 'off',
-            'country_id' => 3
+            'country_id' => 'baz'
         ]);
         self::insert($connection, 'users', [
             'id' => 4,
             'login' => 'bill.shakespeare',
             'password' => null,
             'status' => 'off',
-            'country_id' => 2
+            'country_id' => 'bar'
         ]);
 
         self::insert($connection, 'users_roles', [
@@ -488,7 +491,7 @@ class GraphQLTypeGeneratorTest extends TestCase
         $logged = $reader->getLoggedAnnotation(new ReflectionMethod(AbstractUser::class, 'getStatus'));
         $this->assertNotNull($logged);
 
-        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getId'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getUuid'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertSame('ID', $field->getOutputType());
 
         $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getFiles'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
@@ -499,6 +502,9 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractFile::class, 'getUsers'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertNotNull($field);
+
+        $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getCountry'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
+        $this->assertNull($field->getOutputType());
     }
 
     /**
