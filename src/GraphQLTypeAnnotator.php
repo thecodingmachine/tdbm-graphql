@@ -27,6 +27,7 @@ use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
 use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\PivotTableMethodsDescriptor;
+use function var_dump;
 use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\DocBlock\Tag\GenericTag;
 use Zend\Code\Generator\FileGenerator;
@@ -248,9 +249,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
 
         // one to many and many to many relationships:
         $methodDescriptors = $beanDescriptor->getMethodDescriptors();
-
-        // Let's remove method descriptors that are not annotated with GraphQL
-        $methodDescriptors = array_filter($methodDescriptors, [$this, 'isMethodDescriptorExposed']);
 
         $relationshipsCodes = array_map([$this, 'generateRelationshipsCode'], $methodDescriptors);
         $relationshipsCode = implode('', $relationshipsCodes);
