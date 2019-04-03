@@ -267,7 +267,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
 <?php
 namespace {$this->generatedNamespace};
 
-use TheCodingMachine\GraphQLite\Registry\RegistryInterface;
 use TheCodingMachine\GraphQLite\Annotations\ExtendType;
 use TheCodingMachine\Tdbm\GraphQL\Field;
 use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
