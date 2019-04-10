@@ -15,10 +15,7 @@ abstract class TdbmObjectType implements FromSourceFieldsInterface
      * @deprecated With DB column annotations instead
      * @return Field[]
      */
-    protected function getFieldList(): array
-    {
-        return [];
-    }
+    abstract protected function getFieldList(): array;
 
     /**
      * @deprecated With DB column annotations instead
