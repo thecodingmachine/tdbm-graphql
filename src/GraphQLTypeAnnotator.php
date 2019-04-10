@@ -228,7 +228,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
     private function generateAbstractTypeFile(BeanDescriptorInterface $beanDescriptor)
     {
         $generatedTypeClassName = $this->namingStrategy->getGeneratedClassName($beanDescriptor->getBeanClassName());
-        $typeName = var_export($this->namingStrategy->getGraphQLType($beanDescriptor->getBeanClassName()), true);
 
         $properties = $beanDescriptor->getExposedProperties();
 
@@ -237,15 +236,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
         $fieldsCodes = array_map([$this, 'generateFieldCode'], $properties);
 
         $fieldsCode = implode('', $fieldsCodes);
-
-        $extendedBeanClassName = $beanDescriptor->getExtendedBeanClassName();
-        if ($extendedBeanClassName === null) {
-            $baseClassName = 'TdbmObjectType';
-            $isExtended = false;
-        } else {
-            $baseClassName = '\\'.$this->namespace.'\\'.$this->namingStrategy->getClassName($extendedBeanClassName);
-            $isExtended = true;
-        }
 
         // one to many and many to many relationships:
         $methodDescriptors = $beanDescriptor->getMethodDescriptors();
@@ -274,16 +264,16 @@ use TheCodingMachine\Tdbm\GraphQL\TdbmObjectType;
 /**
  * @ExtendType(class=$beanFullClassName::class)
  */
-abstract class $generatedTypeClassName extends $baseClassName
+abstract class $generatedTypeClassName extends TdbmObjectType
 {
     /**
      * @return Field[]
      */
     protected function getFieldList(): array
     {
-        return array_merge(parent::getFieldList(), [
+        return [
 $fieldFetcherCode
-        ]);
+        ];
     }
     
 $fieldsCode
