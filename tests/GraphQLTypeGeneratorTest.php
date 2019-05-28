@@ -21,6 +21,9 @@ use Symfony\Component\Cache\Simple\NullCache;
 use TheCodingMachine\FluidSchema\TdbmFluidSchema;
 use TheCodingMachine\GraphQLite\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationReader as DoctrineAnnotationReader;
+use TheCodingMachine\GraphQLite\Annotations\FailWith;
+use TheCodingMachine\GraphQLite\Annotations\Logged;
+use TheCodingMachine\GraphQLite\Annotations\Right;
 use TheCodingMachine\GraphQLite\Containers\BasicAutoWiringContainer;
 use TheCodingMachine\GraphQLite\FieldsBuilderFactory;
 use TheCodingMachine\GraphQLite\Hydrators\FactoryHydrator;
@@ -470,25 +473,19 @@ class GraphQLTypeGeneratorTest extends TestCase
         $tdbmService = self::getTDBMService();
         $tdbmService->generateAllDaosAndBeans();
 
-        $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/UserType.php');
-        $this->assertFileExists(__DIR__.'/../src/Tests/GraphQL/Generated/AbstractUserType.php');
-
-        $this->assertTrue(class_exists(AbstractCountryType::class));
-        $abstractCountryType = new \ReflectionClass(AbstractCountryType::class);
-        $this->assertNotNull($abstractCountryType->getMethod('getUsersField'));
-        $abstractUserType = new \ReflectionClass(AbstractUserType::class);
-        $this->assertNotNull($abstractUserType->getMethod('getRolesField'));
-
         /** @var AnnotationReader $reader */
         $reader = new AnnotationReader(new \Doctrine\Common\Annotations\AnnotationReader());
-        $right = $reader->getRightAnnotation(new ReflectionMethod(AbstractUser::class, 'getPassword'));
+        /** @var Right $right */
+        $right = $reader->getMiddlewareAnnotations(new ReflectionMethod(AbstractUser::class, 'getPassword'))->getAnnotationByType(Right::class);
         $this->assertNotNull($right);
 
-        $failWith = $reader->getFailWithAnnotation(new ReflectionMethod(AbstractUser::class, 'getPassword'));
+        /** @var FailWith $failWith */
+        $failWith = $reader->getMiddlewareAnnotations(new ReflectionMethod(AbstractUser::class, 'getPassword'))->getAnnotationByType(FailWith::class);
         $this->assertNotNull($failWith);
         $this->assertNull($failWith->getValue());
 
-        $logged = $reader->getLoggedAnnotation(new ReflectionMethod(AbstractUser::class, 'getStatus'));
+        /** @var Logged $logged */
+        $logged = $reader->getMiddlewareAnnotations(new ReflectionMethod(AbstractUser::class, 'getStatus'))->getAnnotationByType(Logged::class);
         $this->assertNotNull($logged);
 
         $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractCountry::class, 'getUuid'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
