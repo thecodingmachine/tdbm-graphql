@@ -57,10 +57,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
      */
     private $generatedNamespace;
     /**
-     * @var NamingStrategyInterface
-     */
-    private $namingStrategy;
-    /**
      * @var ClassNameMapper
      */
     private $classNameMapper;
@@ -72,10 +68,9 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
     /**
      * @param string $namespace The namespace the type classes will be written in.
      * @param string|null $generatedNamespace The namespace the generated type classes will be written in (defaults to $namespace + '\Generated')
-     * @param NamingStrategyInterface|null $namingStrategy
      * @param ClassNameMapper|null $classNameMapper
      */
-    public function __construct(string $namespace, ?string $generatedNamespace = null, ?NamingStrategyInterface $namingStrategy = null, ?ClassNameMapper $classNameMapper = null, ?AnnotationParser $annotationParser = null)
+    public function __construct(string $namespace, ?string $generatedNamespace = null, ?ClassNameMapper $classNameMapper = null, ?AnnotationParser $annotationParser = null)
     {
         $this->namespace = trim($namespace, '\\');
         if ($generatedNamespace !== null) {
@@ -83,7 +78,6 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
         } else {
             $this->generatedNamespace = $namespace.'\\Generated';
         }
-        $this->namingStrategy = $namingStrategy ?: new DefaultNamingStrategy();
         $this->classNameMapper = $classNameMapper ?: ClassNameMapper::createFromComposerFile();
         $this->annotationParser = $annotationParser ?: AnnotationParser::buildWithDefaultAnnotations([]);
     }
@@ -142,7 +136,7 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
                     $this->alterGetter($getter, $annotations);
                 }
             } else {
-                throw new \RuntimeException('Unexpected property descriptor type.'); // @codeCoverageIgnore
+                throw new GraphQLException('Unexpected property descriptor type.'); // @codeCoverageIgnore
             }
         }
         return [$getter, $setter];
