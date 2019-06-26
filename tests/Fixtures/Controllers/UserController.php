@@ -27,4 +27,12 @@ class UserController
     {
         return $this->userDao->findAll()->toArray();
     }
+
+    /**
+     * @Query()
+     */
+    public function user(User $user): User
+    {
+        return $user;
+    }
 }
