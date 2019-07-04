@@ -106,6 +106,9 @@ class GraphQLTypeGeneratorTest extends TestCase
             CountryController::class => function (ContainerInterface $container): CountryController {
                 $tdbmService = self::getTDBMService();
                 return new CountryController(new CountryDao($tdbmService));
+            },
+            UserDao::class => function(): UserDao {
+                return new UserDao(self::getTDBMService());
             }
         ]);
     }
