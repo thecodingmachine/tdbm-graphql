@@ -12,7 +12,9 @@ use function file_get_contents;
 use function file_put_contents;
 use Mouf\Composer\ClassNameMapper;
 use TheCodingMachine\FluidSchema\DoctrineAnnotationDumper;
+use TheCodingMachine\GraphQLite\Annotations\Factory;
 use TheCodingMachine\GraphQLite\Annotations\FailWith;
+use TheCodingMachine\GraphQLite\Annotations\HideParameter;
 use TheCodingMachine\GraphQLite\Annotations\Logged;
 use TheCodingMachine\GraphQLite\Annotations\Type;
 use TheCodingMachine\TDBM\ConfigurationInterface;
@@ -217,6 +219,19 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
                 $getter->getDocBlock()->setTag(new GenericTag(FailWith::class, $content));
             }
         }
+    }
+
+    public function onBaseDaoGetByIdGenerated(MethodGenerator $methodGenerator, BeanDescriptor $beanDescriptor, ConfigurationInterface $configuration, ClassGenerator $classGenerator): ?MethodGenerator
+    {
+        $annotations = $this->annotationParser->getTableAnnotations($beanDescriptor->getTable());
+        $type = $annotations->findAnnotation(Type::class);
+
+        if ($type !== null) {
+            // This is a type, let's generate a factory for it.
+            $methodGenerator->getDocBlock()->setTag(new GenericTag(Factory::class));
+            $methodGenerator->getDocBlock()->setTag(new GenericTag(HideParameter::class, '(for="$lazyLoading")'));
+        }
+        return $methodGenerator;
     }
 
     /**

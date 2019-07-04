@@ -7,6 +7,8 @@ use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use function file_get_contents;
+use function file_put_contents;
 use GraphQL\Error\Debug;
 use GraphQL\GraphQL;
 use GraphQL\Type\Definition\InputType;
@@ -16,7 +18,9 @@ use GraphQL\Type\SchemaConfig;
 use Mouf\Picotainer\Picotainer;
 use Psr\Container\ContainerInterface;
 use Psr\SimpleCache\CacheInterface;
+use ReflectionClass;
 use ReflectionMethod;
+use function str_replace;
 use Symfony\Component\Cache\Simple\NullCache;
 use TheCodingMachine\FluidSchema\TdbmFluidSchema;
 use TheCodingMachine\GraphQLite\AnnotationReader;
@@ -80,6 +84,7 @@ class GraphQLTypeGeneratorTest extends TestCase
                 $factory = new SchemaFactory(new \Symfony\Component\Cache\Simple\ArrayCache(), $container->get(BasicAutoWiringContainer::class));
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans');
+                $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs');
                 $factory->addControllerNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Fixtures\\Controllers');
                 $factory->setAuthorizationService($container->get(AuthorizationServiceInterface::class));
                 $factory->setAuthenticationService($container->get(AuthenticationServiceInterface::class));
@@ -101,6 +106,9 @@ class GraphQLTypeGeneratorTest extends TestCase
             CountryController::class => function (ContainerInterface $container): CountryController {
                 $tdbmService = self::getTDBMService();
                 return new CountryController(new CountryDao($tdbmService));
+            },
+            UserDao::class => function (): UserDao {
+                return new UserDao(self::getTDBMService());
             }
         ]);
     }
@@ -502,6 +510,18 @@ class GraphQLTypeGeneratorTest extends TestCase
 
         $field = $reader->getRequestAnnotation(new ReflectionMethod(AbstractUser::class, 'getCountry'), \TheCodingMachine\GraphQLite\Annotations\Field::class);
         $this->assertNull($field->getOutputType());
+
+        $type = $reader->getTypeAnnotation(new ReflectionClass(User::class));
+        $this->assertNotNull($type);
+
+        // Let's see if we can EDIT an existing file.
+        $userCode = file_get_contents(__DIR__.'/../src/Tests/Beans/User.php');
+        $userCode = str_replace('@Type', '', $userCode);
+        file_put_contents(__DIR__.'/../src/Tests/Beans/User.php', $userCode);
+
+        $tdbmService->generateAllDaosAndBeans();
+        $userCode = file_get_contents(__DIR__.'/../src/Tests/Beans/User.php');
+        $this->assertContains('@Type', $userCode);
     }
 
     /**
@@ -569,6 +589,17 @@ EOF;
         $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('John Smith', $response['data']['users'][0]['name']);
         $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
+
+        $query4 = <<<EOF
+{
+  user(user: {id:1}) {
+    id,
+    name
+  }
+}
+EOF;
+        $response = GraphQL::executeQuery($schema, $query4)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $this->assertSame('John Smith', $response['data']['user']['name']);
     }
 
     /**
