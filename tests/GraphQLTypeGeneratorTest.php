@@ -457,7 +457,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $config = new \Doctrine\DBAL\Configuration();
         $connection = DriverManager::getConnection(self::getConnectionParams(), $config);
-        $annotator = new GraphQLTypeAnnotator('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
+        $annotator = new GraphQLTypeAnnotator();
         $configuration = new Configuration(
             'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans',
             'TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs',
