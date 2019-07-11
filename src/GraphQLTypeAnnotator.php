@@ -3,14 +3,9 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
-use function array_filter;
 use function array_map;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Schema\Table;
-use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
-use Mouf\Composer\ClassNameMapper;
 use TheCodingMachine\FluidSchema\DoctrineAnnotationDumper;
 use TheCodingMachine\GraphQLite\Annotations\Factory;
 use TheCodingMachine\GraphQLite\Annotations\FailWith;
@@ -29,17 +24,13 @@ use TheCodingMachine\TDBM\Utils\DirectForeignKeyMethodDescriptor;
 use TheCodingMachine\TDBM\Utils\GeneratorListenerInterface;
 use TheCodingMachine\TDBM\Utils\ObjectBeanPropertyDescriptor;
 use TheCodingMachine\TDBM\Utils\PivotTableMethodsDescriptor;
-use function var_dump;
 use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\DocBlock\Tag\GenericTag;
 use Zend\Code\Generator\FileGenerator;
 use Zend\Code\Generator\MethodGenerator;
 use TheCodingMachine\TDBM\Utils\BeanDescriptorInterface;
-use Symfony\Component\Filesystem\Filesystem;
-use TheCodingMachine\TDBM\Utils\MethodDescriptorInterface;
 use TheCodingMachine\TDBM\Utils\ScalarBeanPropertyDescriptor;
 use TheCodingMachine\GraphQLite\Annotations\Field as GraphQLField;
-use function var_export;
 
 /**
  * Annotates TDBM beans by adding "Type" and "Field" annotations.
@@ -51,36 +42,12 @@ class GraphQLTypeAnnotator extends BaseCodeGeneratorListener implements Generato
      */
     private $annotationParser;
     /**
-     * @var string
-     */
-    private $namespace;
-    /**
-     * @var string
-     */
-    private $generatedNamespace;
-    /**
-     * @var ClassNameMapper
-     */
-    private $classNameMapper;
-    /**
      * @var bool
      */
     private $exposeAllBeans = false;
 
-    /**
-     * @param string $namespace The namespace the type classes will be written in.
-     * @param string|null $generatedNamespace The namespace the generated type classes will be written in (defaults to $namespace + '\Generated')
-     * @param ClassNameMapper|null $classNameMapper
-     */
-    public function __construct(string $namespace, ?string $generatedNamespace = null, ?ClassNameMapper $classNameMapper = null, ?AnnotationParser $annotationParser = null)
+    public function __construct(?AnnotationParser $annotationParser = null)
     {
-        $this->namespace = trim($namespace, '\\');
-        if ($generatedNamespace !== null) {
-            $this->generatedNamespace = $generatedNamespace;
-        } else {
-            $this->generatedNamespace = $namespace.'\\Generated';
-        }
-        $this->classNameMapper = $classNameMapper ?: ClassNameMapper::createFromComposerFile();
         $this->annotationParser = $annotationParser ?: AnnotationParser::buildWithDefaultAnnotations([]);
     }
 
