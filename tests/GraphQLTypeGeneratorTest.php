@@ -2,6 +2,8 @@
 
 namespace TheCodingMachine\Tdbm\GraphQL;
 
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 use function copy;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ArrayCache;
@@ -81,7 +83,7 @@ class GraphQLTypeGeneratorTest extends TestCase
     {
         $this->mainContainer = new Picotainer([
             Schema::class => function (ContainerInterface $container) {
-                $factory = new SchemaFactory(new \Symfony\Component\Cache\Simple\ArrayCache(), $container->get(BasicAutoWiringContainer::class));
+                $factory = new SchemaFactory(new Psr16Cache(new ArrayAdapter()), $container->get(BasicAutoWiringContainer::class));
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\GraphQL');
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\Beans');
                 $factory->addTypeNamespace('TheCodingMachine\\Tdbm\\GraphQL\\Tests\\DAOs');
