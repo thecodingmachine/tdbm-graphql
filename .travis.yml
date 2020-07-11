@@ -1,6 +1,5 @@
 language: php
-php:
-- 7.2
+
 cache:
   directories:
     - $HOME/.composer/cache
@@ -8,20 +7,18 @@ cache:
 services:
   - mysql
 
-addons:
-  apt:
-    sources:
-      - mysql-5.7-trusty
-    packages:
-      - mysql-server
-
-dist: trusty
+dist: bionic
 sudo: required
 
-env:
-  matrix:
-  - PREFER_LOWEST="--prefer-lowest"
-  - PREFER_LOWEST=""
+matrix:
+  fast_finish: true
+  include:
+    # Test the latest stable release
+    - php: 7.2
+    - php: 7.2
+      env: PREFER_LOWEST="--prefer-lowest"
+    - php: 7.4
+
 before_script:
 - composer update --prefer-dist $PREFER_LOWEST
 script:
