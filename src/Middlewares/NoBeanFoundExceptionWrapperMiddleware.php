@@ -10,10 +10,8 @@ use TheCodingMachine\TDBM\NoBeanFoundException;
 
 class NoBeanFoundExceptionWrapperMiddleware implements FieldMiddlewareInterface
 {
-
     public function process(QueryFieldDescriptor $queryFieldDescriptor, FieldHandlerInterface $fieldHandler): ?FieldDefinition
     {
-
         $resolver = $queryFieldDescriptor->getResolver();
 
         $queryFieldDescriptor->setResolver(function (...$args) use ($resolver, $queryFieldDescriptor) {
