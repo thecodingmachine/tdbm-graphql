@@ -11,8 +11,8 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use function file_get_contents;
 use function file_put_contents;
-use GraphQL\Error\Debug;
 use GraphQL\GraphQL;
+use GraphQL\Error\DebugFlag;
 use GraphQL\Type\Definition\InputType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -543,7 +543,7 @@ class GraphQLTypeGeneratorTest extends TestCase
 }
 EOF;
 
-        $response = GraphQL::executeQuery($schema, $introspectionQuery)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $response = GraphQL::executeQuery($schema, $introspectionQuery)->toArray(DebugFlag::RETHROW_UNSAFE_EXCEPTIONS | DebugFlag::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertTrue(isset($response['data']['__schema']['queryType']['name']));
 
         $introspectionQuery2 = <<<EOF
@@ -562,7 +562,7 @@ EOF;
 }
 EOF;
 
-        $response = GraphQL::executeQuery($schema, $introspectionQuery2)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $response = GraphQL::executeQuery($schema, $introspectionQuery2)->toArray(DebugFlag::RETHROW_UNSAFE_EXCEPTIONS | DebugFlag::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('User', $response['data']['__type']['name']);
         $this->assertSame('OBJECT', $response['data']['__type']['kind']);
         $this->assertSame('id', $response['data']['__type']['fields'][0]['name']);
@@ -588,7 +588,7 @@ EOF;
   }
 }
 EOF;
-        $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $response = GraphQL::executeQuery($schema, $introspectionQuery3)->toArray(DebugFlag::RETHROW_UNSAFE_EXCEPTIONS | DebugFlag::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('John Smith', $response['data']['users'][0]['name']);
         $this->assertSame('Admins', $response['data']['users'][0]['roles'][0]['name']);
 
@@ -600,7 +600,7 @@ EOF;
   }
 }
 EOF;
-        $response = GraphQL::executeQuery($schema, $query4)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $response = GraphQL::executeQuery($schema, $query4)->toArray(DebugFlag::RETHROW_UNSAFE_EXCEPTIONS | DebugFlag::RETHROW_INTERNAL_EXCEPTIONS);
         $this->assertSame('John Smith', $response['data']['user']['name']);
     }
 
@@ -638,7 +638,7 @@ EOF;
   }
 }
 EOF;
-        $response = GraphQL::executeQuery($schema, $query)->toArray(Debug::RETHROW_UNSAFE_EXCEPTIONS | Debug::RETHROW_INTERNAL_EXCEPTIONS);
+        $response = GraphQL::executeQuery($schema, $query)->toArray(DebugFlag::RETHROW_UNSAFE_EXCEPTIONS | DebugFlag::RETHROW_INTERNAL_EXCEPTIONS);
 
         $this->assertSame([
             'data' =>

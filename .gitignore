@@ -4,3 +4,4 @@
 /src/Tests/
 /build/
 /phpunit.xml
+/tdbm.lock.yml
